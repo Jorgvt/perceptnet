@@ -8,7 +8,7 @@ class KernelIdentity(tf.keras.initializers.Initializer):
     def __init__(self, gain):
         self.gain = gain
 
-    def call(self, shape, dtype=None):
+    def __call__(self, shape, dtype=None):
         """
         shape has the form [Kx, Ky, Cin, Cout] disregarding data_format.
         """
