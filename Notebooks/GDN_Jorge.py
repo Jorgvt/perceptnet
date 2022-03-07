@@ -96,6 +96,19 @@ class GDN(tf.keras.layers.Layer):
         [batch_size, channels, height, width].
         We'll first copy it and then we'll try to change it.
         """
+        ## We'll first pad the image by hand because doing it inside
+        ## the layer only allows to pad with 0s and we want to pad with the
+        ## reflection. As we're normalizing with the surrounding pixels,ç
+        ## padding with 0s and padding with the reflection can have greatly
+        ## different results at the edges.
+        X = tf.pad(X, 
+                   mode = 'REFLECT',
+                   paddings = tf.constant([[0, 0], # Batch dim
+                                           [int((self.kernel_size-1)/2),
+                                            int((self.kernel_size-1)/2)], 
+                                           [int((self.kernel_size-1)/2), 
+                                            int((self.kernel_size-1)/2)], 
+                                           [0, 0]]))
         norm_pool = self.conv(tf.pow(X, self.alpha))
         norm_pool = tf.pow(norm_pool, self.epsilon)
 
