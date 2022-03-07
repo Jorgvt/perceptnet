@@ -74,7 +74,7 @@ class GDN(tf.keras.layers.Layer):
 
         self.conv = layers.Conv2D(filters=n_channels,
                                   kernel_size=self.kernel_size,
-                                  padding="same",
+                                  padding="valid", # We're using valid because the padding is done by hand with reflection
                                   strides=1,
                                   groups=self.groups,
                                   data_format=self.data_format,
