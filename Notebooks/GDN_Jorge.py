@@ -33,11 +33,11 @@ class GDN(tf.keras.layers.Layer):
                  reparam_offset=2**(-18),
                  beta_min=1e-6,
                  apply_independently=False,
-                 data_format="channels_last"):
+                 data_format="channels_last",
+                 **kwargs):
 
-        super(GDN, self).__init__()
+        super(GDN, self).__init__(**kwargs)
         self.kernel_size = kernel_size
-        # self.n_channels = n_channels
         self.gamma_init = gamma_init
         self.reparam_offset = reparam_offset
         self.beta_min = beta_min
@@ -45,15 +45,10 @@ class GDN(tf.keras.layers.Layer):
         self.apply_independently = apply_independently
         self.data_format = data_format
         
-        ## Trainable parameters
-        self.alpha = self.add_weight(shape=(1),
-                                     initializer=tf.keras.initializers.Constant(alpha_init),
-                                     trainable=alpha_trainable,
-                                     name='alpha')
-        self.epsilon = self.add_weight(shape=(1),
-                                       initializer=tf.keras.initializers.Constant(epsilon_init),
-                                       trainable=epsilon_trainable,
-                                       name='epsilon')
+        self.alpha_init = alpha_init
+        self.epsilon_init = epsilon_init
+        self.alpha_trainable = alpha_trainable
+        self.epsilon_trainable = epsilon_trainable        
 
     def build(self, input_shape):
         ## Extract the number of channels from the input shape
@@ -89,6 +84,16 @@ class GDN(tf.keras.layers.Layer):
                                                                       clip_value_max=tf.float32.max))
         self.conv.build(input_shape)
 
+        ## We have to define them here so that the names are properly set
+        self.alpha = self.add_weight(shape=(1),
+                                    initializer=tf.keras.initializers.Constant(self.alpha_init),
+                                    trainable=self.alpha_trainable,
+                                    name='alpha')
+        self.epsilon = self.add_weight(shape=(1),
+                                    initializer=tf.keras.initializers.Constant(self.epsilon_init),
+                                    trainable=self.epsilon_trainable,
+                                    name='epsilon')
+
 
     def call(self, X):
         """
@@ -113,3 +118,13 @@ class GDN(tf.keras.layers.Layer):
         norm_pool = tf.pow(norm_pool, self.epsilon)
 
         return X / norm_pool
+
+    def get_config(self):
+        """
+        Returns a dictionary used to initialize this layer. Is used when
+        saving the layer or a model that contains it.
+        """
+        base_config = super(GDN, self).get_config()
+        config = {'alpha':self.alpha,
+                  'epsilon':self.epsilon}
+        return dict(list(base_config.items()) + list(config.items()))
