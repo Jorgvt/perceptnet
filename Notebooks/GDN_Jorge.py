@@ -1,26 +1,7 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.keras import layers
 
-class KernelIdentity(tf.keras.initializers.Initializer):
-
-    def __init__(self, gain):
-        self.gain = gain
-
-    def __call__(self, shape, dtype=None):
-        """
-        shape has the form [Kx, Ky, Cin, Cout] disregarding data_format.
-        """
-        identity_matrix = tf.eye(shape[0])*self.gain
-        identity_matrix = tf.expand_dims(identity_matrix, axis=-1)
-        identity_matrix = tf.expand_dims(identity_matrix, axis=-1)
-        identity_matrix = tf.repeat(identity_matrix, shape[2], axis=-2)
-        identity_matrix = tf.repeat(identity_matrix, shape[3], axis=-1)
-        return identity_matrix
-    
-    def get_config(self):
-        return {'gain':self.gain}
+from kernelidentity import KernelIdentity
 
 class GDN(tf.keras.layers.Layer):
     def __init__(self,
@@ -33,6 +14,7 @@ class GDN(tf.keras.layers.Layer):
                  reparam_offset=2**(-18),
                  beta_min=1e-6,
                  apply_independently=False,
+                 kernel_initializer="identity",
                  data_format="channels_last",
                  **kwargs):
 
@@ -43,6 +25,7 @@ class GDN(tf.keras.layers.Layer):
         self.beta_min = beta_min
         self.beta_reparam = (self.beta_min+self.reparam_offset**2)**(1/2)
         self.apply_independently = apply_independently
+        self.kernel_initializer = KernelIdentity(gain=gamma_init) if kernel_initializer=="identity" else kernel_initializer
         self.data_format = data_format
         
         self.alpha_init = alpha_init
@@ -74,7 +57,7 @@ class GDN(tf.keras.layers.Layer):
                                   groups=self.groups,
                                   data_format=self.data_format,
                                   trainable=True,
-                                  kernel_initializer=KernelIdentity(gain=self.gamma_init),
+                                  kernel_initializer=self.kernel_initializer,
                                   kernel_constraint=lambda x: tf.clip_by_value(x, 
                                                                        clip_value_min=self.reparam_offset,
                                                                        clip_value_max=tf.float32.max),
@@ -84,15 +67,25 @@ class GDN(tf.keras.layers.Layer):
                                                                       clip_value_max=tf.float32.max))
         self.conv.build(input_shape)
 
-        ## We have to define them here so that the names are properly set
+        # We have to define them here so that the names are properly set
+        ## Actually, alpha should be a matrix as big as the kernel, and thus
+        ## every element in X could be on a different power.
         self.alpha = self.add_weight(shape=(1),
-                                    initializer=tf.keras.initializers.Constant(self.alpha_init),
-                                    trainable=self.alpha_trainable,
-                                    name='alpha')
+                                     initializer=tf.keras.initializers.Constant(self.alpha_init),
+                                     trainable=self.alpha_trainable,
+                                     name='alpha')
         self.epsilon = self.add_weight(shape=(1),
-                                    initializer=tf.keras.initializers.Constant(self.epsilon_init),
-                                    trainable=self.epsilon_trainable,
-                                    name='epsilon')
+                                       initializer=tf.keras.initializers.Constant(self.epsilon_init),
+                                       trainable=self.epsilon_trainable,
+                                       name='epsilon')
+        ## Before que needed to define beta explicitly because we were using tf.nn.conv2d() and that doesnt allow
+        ## the use of biases, but it's actually the bias. (The torch implementation uses it as the bias as well).
+        # self.beta = self.add_weights(shape=n_channels,
+        #                              initializer='ones',
+        #                              constrain=lambda x: tf.clip_by_value(x, 
+        #                                                                   clip_value_min=self.beta_reparam,
+        #                                                                   clip_value_max=tf.float32.max),
+        #                              name='beta')
 
 
     def call(self, X):
