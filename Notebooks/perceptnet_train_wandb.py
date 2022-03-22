@@ -114,7 +114,7 @@ class PerceptNet(tf.keras.Model):
             l2 = (features_original-features_distorted)**2
             l2 = tf.reduce_sum(l2, axis=[1,2,3])
             l2 = tf.sqrt(l2)
-            loss = self.compiled_loss(mos, l2)
+            loss = -self.compiled_loss(mos, l2)
         
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
@@ -128,7 +128,7 @@ class PerceptNet(tf.keras.Model):
         l2 = (features_original-features_distorted)**2
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
-        loss = self.compiled_loss(mos, l2)
+        loss = -self.compiled_loss(mos, l2)
         return {'pearson':loss}
 
 
@@ -150,12 +150,12 @@ if __name__ == '__main__':
         'learning_rate':3e-4,
         'batch_size':64,
         'kernel_initializer':'zeros',
-        'test_images':['20', '21', '22', '23', '24', '25'],
+        'test_images':['20', '21', '22', '23', '24'],
     }
 
     wandb.init(project='PerceptNet',
-               notes="Excluding non-natural image. Images ",
-               tags=["full", "norm", "min", "excluded non-natural"],
+               notes="Excluding non-natural image.",
+               tags=["all dists", "full", "norm", "max 10-mos", "excluded non-natural"],
                config=config)
     config = wandb.config
 
@@ -172,14 +172,14 @@ if __name__ == '__main__':
         for sample in train_data:
             img = cv2.imread(sample.img_path)/255.0
             dist_img = cv2.imread(sample.dist_img_path)/255.0
-            metric = sample.metric
+            metric = 10 - sample.metric
             yield img, dist_img, metric
 
     def test_gen():
         for sample in test_data:
             img = cv2.imread(sample.img_path)/255.0
             dist_img = cv2.imread(sample.dist_img_path)/255.0
-            metric = sample.metric
+            metric = 10 - sample.metric
             yield img, dist_img, metric
 
     train_dataset = tf.data.Dataset.from_generator(train_gen,
@@ -205,9 +205,9 @@ if __name__ == '__main__':
                                               seed=42) \
                                      .batch(config.batch_size), 
                         epochs=config.epochs,
-                        verbose=1,
+                        verbose=0,
                         validation_data=test_dataset.batch(config.batch_size),
-                        callbacks=[WandbCallback(monitor='pearson',
+                        callbacks=[WandbCallback(monitor='val_pearson',
                                                  mode='min',
                                                  save_model=True,
                                                  save_weights_only=True)])
