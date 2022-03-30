@@ -99,15 +99,15 @@ class GDN(tf.keras.layers.Layer):
         ## reflection. As we're normalizing with the surrounding pixels,ç
         ## padding with 0s and padding with the reflection can have greatly
         ## different results at the edges.
-        X = tf.pad(X, 
-                   mode = 'REFLECT',
-                   paddings = tf.constant([[0, 0], # Batch dim
-                                           [int((self.kernel_size-1)/2),
-                                            int((self.kernel_size-1)/2)], 
-                                           [int((self.kernel_size-1)/2), 
-                                            int((self.kernel_size-1)/2)], 
-                                           [0, 0]]))
-        norm_pool = self.conv(tf.pow(X, self.alpha))
+        X_pad = tf.pad(X, 
+                       mode = 'REFLECT',
+                       paddings = tf.constant([[0, 0], # Batch dim
+                                               [int((self.kernel_size-1)/2),
+                                                int((self.kernel_size-1)/2)], 
+                                               [int((self.kernel_size-1)/2), 
+                                                int((self.kernel_size-1)/2)], 
+                                               [0, 0]]))
+        norm_pool = self.conv(tf.pow(X_pad, self.alpha))
         norm_pool = tf.pow(norm_pool, self.epsilon)
 
         return X / norm_pool
