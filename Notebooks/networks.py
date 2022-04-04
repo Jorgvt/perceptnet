@@ -61,7 +61,7 @@ class PerceptNet(tf.keras.Model):
         return {'pearson':loss}
 
 class PerceptNetRegressor(tf.keras.Model):
-    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, avg_pooling=True):
         super(PerceptNetRegressor, self).__init__()
         self.gdn1 = GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer)
         self.conv1 = layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same')
@@ -72,7 +72,7 @@ class PerceptNetRegressor(tf.keras.Model):
         self.gdn3 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
         self.conv3 = layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same')
         self.gdn4 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
-        self.flatten = layers.Flatten()
+        self.flatten = layers.GlobalAveragePooling2D() if avg_pooling else layers.Flatten()
         self.regressor = layers.Dense(1)
         self.correlation_loss = PearsonCorrelation()
 
