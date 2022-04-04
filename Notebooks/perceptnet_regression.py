@@ -242,6 +242,7 @@ if __name__ == '__main__':
         'kernel_initializer':'zeros',
         'gdn_kernel_size':1,
         'learnable_undersampling':True,
+        'avg_pooling':True,
         # 'test_images':['20', '21', '22', '23', '24'],
         # 'test_dists':['05', '10', '15', '20', '24']
     }
