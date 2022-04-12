@@ -236,13 +236,14 @@ if __name__ == '__main__':
         'seed':42,
         'train_dataset':'TID2008',
         'test_dataset':'TID2013',
-        'epochs':150,
+        'epochs':300,
         'learning_rate':3e-4,
         'batch_size':32,
-        'kernel_initializer':'zeros',
+        'kernel_initializer':'ones',
         'gdn_kernel_size':1,
         'learnable_undersampling':True,
         'avg_pooling':True,
+        'features_diff':True,
         # 'test_images':['20', '21', '22', '23', '24'],
         # 'test_dists':['05', '10', '15', '20', '24']
     }
@@ -250,7 +251,7 @@ if __name__ == '__main__':
     wandb.init(project='PerceptNetRegressor',
                notes="Excluding non-natural image.",
                tags=["mse", "excluded non-natural", 'Train_TID2008', 'Test_TID2013'],
-               name = 'LearnableUndersampling',
+               name = 'Features_Diff',
                config=config,
                mode='online') # 'disabled'/'online'
     config = wandb.config
@@ -304,7 +305,8 @@ if __name__ == '__main__':
     
     model = PerceptNetRegressor(kernel_initializer=config.kernel_initializer, 
                                 gdn_kernel_size=config.gdn_kernel_size, 
-                                learnable_undersampling=config.learnable_undersampling)
+                                learnable_undersampling=config.learnable_undersampling,
+                                features_diff=config.features_diff)
     model.compile(optimizer=Adam(learning_rate=config.learning_rate),
                   loss='mse')
 

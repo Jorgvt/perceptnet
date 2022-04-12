@@ -60,8 +60,57 @@ class PerceptNet(tf.keras.Model):
         loss = self.compiled_loss(mos, l2)
         return {'pearson':loss}
 
+class PerceptNetSeq(tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
+        super(PerceptNetSeq, self).__init__()
+        self.model = tf.keras.Sequential([
+            GDNJ(kernel_size=1, apply_independently=True, kernel_initializer=kernel_initializer),
+            layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+            layers.MaxPool2D(2),
+            GDNJ(kernel_size=1, kernel_initializer=kernel_initializer),
+            layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
+            layers.MaxPool2D(2),
+            GDNJ(kernel_size=1, kernel_initializer=kernel_initializer),
+            layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
+            GDNJ(kernel_size=1, kernel_initializer=kernel_initializer)
+        ])
+
+    def call(self, X):
+        return self.model(X)
+
+    def train_step(self, data):
+        """
+        X: tuple (Original Image, Distorted Image)
+        Y: float (MOS score)
+        """
+
+        img, dist_img, mos = data
+
+        with tf.GradientTape() as tape:
+            features_original = self(img)
+            features_distorted = self(dist_img)
+            l2 = (features_original-features_distorted)**2
+            l2 = tf.reduce_sum(l2, axis=[1,2,3])
+            l2 = tf.sqrt(l2)
+            loss = self.compiled_loss(mos, l2)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        return {'pearson':loss}
+    
+    def test_step(self, data):
+        img, dist_img, mos = data
+        features_original = self(img)
+        features_distorted = self(dist_img)
+        l2 = (features_original-features_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        loss = self.compiled_loss(mos, l2)
+        return {'pearson':loss}
+
 class PerceptNetRegressor(tf.keras.Model):
-    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, avg_pooling=True):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, avg_pooling=True, features_diff=False):
         super(PerceptNetRegressor, self).__init__()
         self.gdn1 = GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer)
         self.conv1 = layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same')
@@ -75,6 +124,7 @@ class PerceptNetRegressor(tf.keras.Model):
         self.flatten = layers.GlobalAveragePooling2D() if avg_pooling else layers.Flatten()
         self.regressor = layers.Dense(1)
         self.correlation_loss = PearsonCorrelation()
+        self.features_diff = features_diff
 
     def extract_features(self, X):
         features = self.gdn1(X)
@@ -86,6 +136,102 @@ class PerceptNetRegressor(tf.keras.Model):
         features = self.gdn3(features)
         features = self.conv3(features)
         features = self.gdn4(features)
+        return features
+
+    def call(self, X):
+        X1, X2 = X
+        features1 = self.extract_features(X1)
+        features2 = self.extract_features(X2)
+        if self.features_diff:
+            features = (features1-features2)**2
+        else:
+            features = layers.concatenate([features1, features2])
+        output = self.flatten(features)
+        output = self.regressor(output)
+        return output
+
+    def train_step(self, data):
+        """
+        X: tuple (Original Image, Distorted Image)
+        Y: float (MOS score)
+        """
+
+        ## Forward pass and backprop
+        img, dist_img, mos = data
+
+        with tf.GradientTape() as tape:
+            features_original = self.extract_features(img)
+            features_distorted = self.extract_features(dist_img)
+            if self.features_diff:
+                features = (features_original-features_distorted)**2
+            else:
+                features = layers.concatenate([features_original, features_distorted])
+            features = self.flatten(features)
+            mos_pred = self.regressor(features)
+            loss = self.compiled_loss(mos, mos_pred)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        ## Evaluating the Pearson Correlation PerceptNet-like
+        l2 = (features_original-features_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        correlation = self.correlation_loss(mos, l2)
+
+        ## Evaluating the Pearson Correlation between the MOSes
+        correlation_mos = self.correlation_loss(mos, mos_pred)
+
+        return {'loss':loss, 'pearson':correlation, 'pearson_mos':correlation_mos}
+    
+    def test_step(self, data):
+        img, dist_img, mos = data
+        features_original = self.extract_features(img)
+        features_distorted = self.extract_features(dist_img)
+        if self.features_diff:
+            features = (features_original-features_distorted)**2
+        else:
+            features = layers.concatenate([features_original, features_distorted])
+        features = self.flatten(features)
+        mos_pred = self.regressor(features)
+        loss = self.compiled_loss(mos, mos_pred)
+        l2 = (features_original-features_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        correlation = self.correlation_loss(mos, l2)
+        correlation_mos = self.correlation_loss(mos, mos_pred)
+        return {'loss':loss, 'pearson':correlation, 'pearson_mos':correlation_mos}
+
+class PerceptNetRegressorFine(tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, avg_pooling=True):
+        super(PerceptNetRegressorFine, self).__init__()
+        # self.gdn1 = GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer)
+        # self.conv1 = layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same')
+        # self.undersampling1 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        # self.gdn2 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+        # self.conv2 = layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same')
+        # self.undersampling2 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        # self.gdn3 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+        # self.conv3 = layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same')
+        # self.gdn4 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+        self.perceptnet = PerceptNet(kernel_initializer=kernel_initializer,
+                                     gdn_kernel_size=gdn_kernel_size,
+                                     learnable_undersampling=learnable_undersampling)
+        self.flatten = layers.GlobalAveragePooling2D() if avg_pooling else layers.Flatten()
+        self.regressor = layers.Dense(1)
+        self.correlation_loss = PearsonCorrelation()
+
+    def extract_features(self, X):
+        # features = self.gdn1(X)
+        # features = self.conv1(features)
+        # features = self.undersampling1(features)
+        # features = self.gdn2(features)
+        # features = self.conv2(features)
+        # features = self.undersampling2(features)
+        # features = self.gdn3(features)
+        # features = self.conv3(features)
+        # features = self.gdn4(features)
+        features = self.perceptnet(X)
         return features
 
     def call(self, X):
