@@ -42,7 +42,7 @@ class MOSScatterPlot(tf.keras.callbacks.Callback):
             ax[1].scatter(test_moss, test_moss_pred)
             ax[1].set_title(f'Test | Epoch: {epoch} | Pearson: {self.model.correlation_loss(test_moss, test_moss_pred):.2f}')
             ax[1].set_xlabel('MOS')
-            ax[1].set_ylabel('MOS_Pred'
+            ax[1].set_ylabel('MOS_Pred')
 
             wandb.log({'MOS_Scatter':wandb.Image(fig)})
     
