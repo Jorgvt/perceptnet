@@ -1,6 +1,6 @@
 from collections import namedtuple
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="3"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 import random
 
 import numpy as np
@@ -148,69 +148,6 @@ def filter_data_2013(img_ids='all',
             data.append(ImagePair(img_path, dist_img_path, name_metric_2013[dist_img_path.split("/")[-1].split(".")[0]]))
     return data
 
-# class PerceptNet(tf.keras.Model):
-#     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
-#         super(PerceptNet, self).__init__()
-#         if learnable_undersampling:
-#             self.model = tf.keras.Sequential([
-#                 GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
-#                 layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu'),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
-#                 layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu'),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
-#             ])
-#         else:
-#             self.model = tf.keras.Sequential([
-#                 GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
-#                 layers.MaxPool2D(2),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
-#                 layers.MaxPool2D(2),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
-#                 layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
-#                 GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
-#             ])
-    
-#     def call(self, X):
-#         return self.model(X)
-
-#     def train_step(self, data):
-#         """
-#         X: tuple (Original Image, Distorted Image)
-#         Y: float (MOS score)
-#         """
-
-#         img, dist_img, mos = data
-
-#         with tf.GradientTape() as tape:
-#             features_original = self(img)
-#             features_distorted = self(dist_img)
-#             l2 = (features_original-features_distorted)**2
-#             l2 = tf.reduce_sum(l2, axis=[1,2,3])
-#             l2 = tf.sqrt(l2)
-#             loss = self.compiled_loss(mos, l2)
-        
-#         gradients = tape.gradient(loss, self.trainable_variables)
-#         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
-
-#         return {'pearson':loss}
-    
-#     def test_step(self, data):
-#         img, dist_img, mos = data
-#         features_original = self(img)
-#         features_distorted = self(dist_img)
-#         l2 = (features_original-features_distorted)**2
-#         l2 = tf.reduce_sum(l2, axis=[1,2,3])
-#         l2 = tf.sqrt(l2)
-#         loss = self.compiled_loss(mos, l2)
-#         return {'pearson':loss}
-
-
 if __name__ == '__main__':
 
     path_2008 = '/media/disk/databases/BBDD_video_image/Image_Quality/TID/TID2008'
@@ -236,10 +173,10 @@ if __name__ == '__main__':
         'seed':42,
         'train_dataset':'TID2008',
         'test_dataset':'TID2013',
-        'epochs':300,
+        'epochs':2,
         'learning_rate':3e-4,
         'batch_size':32,
-        'kernel_initializer':'ones',
+        'kernel_initializer':'zeros',
         'gdn_kernel_size':1,
         'learnable_undersampling':True,
         'avg_pooling':True,
@@ -251,13 +188,13 @@ if __name__ == '__main__':
     wandb.init(project='PerceptNetRegressor',
                notes="Excluding non-natural image.",
                tags=["mse", "excluded non-natural", 'Train_TID2008', 'Test_TID2013'],
-               name = 'Features_Diff',
+               name = 'MeanFeaturesDiff-Zeros',
                config=config,
                mode='online') # 'disabled'/'online'
     config = wandb.config
     
-    wandb.run.name = f'{wandb.run.name}_GDN_Kernel_Size={config.gdn_kernel_size}'
-    wandb.run.save()
+    # wandb.run.name = f'{wandb.run.name}_GDN_Kernel_Size={config.gdn_kernel_size}'
+    # wandb.run.save()
 
     # tf.keras.utils.set_random_seed(config.seed)
     random.seed(config.seed)
@@ -324,4 +261,5 @@ if __name__ == '__main__':
                                                  log_weights=True),
                                    GDNWeightWatcherWandb()])
     wandb.run.summary['n_params'] = np.sum([np.prod(v.shape) for v in model.trainable_variables])
+    model.save_weights(os.path.join(wandb.run.dir, "final_model.h5"))
     wandb.finish()
