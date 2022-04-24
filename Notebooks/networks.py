@@ -143,10 +143,12 @@ class PerceptNetRegressor(tf.keras.Model):
         features1 = self.extract_features(X1)
         features2 = self.extract_features(X2)
         if self.features_diff:
-            features = (features1-features2)**2
+            features1 = self.flatten(features1)
+            features2 = self.flatten(features2)
+            output = tf.math.abs(features1-features2)
         else:
             features = layers.concatenate([features1, features2])
-        output = self.flatten(features)
+            output = self.flatten(features)
         output = self.regressor(output)
         return output
 
@@ -163,10 +165,12 @@ class PerceptNetRegressor(tf.keras.Model):
             features_original = self.extract_features(img)
             features_distorted = self.extract_features(dist_img)
             if self.features_diff:
-                features = (features_original-features_distorted)**2
+                features_original_f = self.flatten(features_original)
+                features_distorted_f = self.flatten(features_distorted)
+                features = tf.math.abs(features_original_f-features_distorted_f)
             else:
                 features = layers.concatenate([features_original, features_distorted])
-            features = self.flatten(features)
+                features = self.flatten(features)
             mos_pred = self.regressor(features)
             loss = self.compiled_loss(mos, mos_pred)
         
@@ -189,10 +193,12 @@ class PerceptNetRegressor(tf.keras.Model):
         features_original = self.extract_features(img)
         features_distorted = self.extract_features(dist_img)
         if self.features_diff:
-            features = (features_original-features_distorted)**2
+            features_original_f = self.flatten(features_original)
+            features_distorted_f = self.flatten(features_distorted)
+            features = tf.math.abs(features_original_f-features_distorted_f)
         else:
             features = layers.concatenate([features_original, features_distorted])
-        features = self.flatten(features)
+            features = self.flatten(features)
         mos_pred = self.regressor(features)
         loss = self.compiled_loss(mos, mos_pred)
         l2 = (features_original-features_distorted)**2
