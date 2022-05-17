@@ -126,7 +126,7 @@ class GDN(tf.keras.layers.Layer):
             'beta_min': self.beta_min,
             'beta_reparam': self.beta_reparam,
             'apply_independently': self.apply_independently,
-            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'kernel_initializer': self.kernel_initializer,
             'data_format': self.data_format,
             'alpha_init': self.alpha_init,
             'epsilon_init': self.epsilon_init,
