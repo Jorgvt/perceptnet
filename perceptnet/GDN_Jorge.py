@@ -1,5 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers
+from tensorflow.keras import initializers
 
 from .kernelidentity import KernelIdentity
 
@@ -117,7 +118,19 @@ class GDN(tf.keras.layers.Layer):
         Returns a dictionary used to initialize this layer. Is used when
         saving the layer or a model that contains it.
         """
-        base_config = super(GDN, self).get_config()
-        config = {'alpha':self.alpha,
-                  'epsilon':self.epsilon}
-        return dict(list(base_config.items()) + list(config.items()))
+        config = super(GDN, self).get_config()
+        config.update({
+            'kernel_size': self.kernel_size,
+            'gamma_init': self.gamma_init,
+            'reparam_offset': self.reparam_offset,
+            'beta_min': self.beta_min,
+            'beta_reparam': self.beta_reparam,
+            'apply_independently': self.apply_independently,
+            'kernel_initializer': initializers.serialize(self.kernel_initializer),
+            'data_format': self.data_format,
+            'alpha_init': self.alpha_init,
+            'epsilon_init': self.epsilon_init,
+            'alpha_trainable': self.alpha_trainable,
+            'epsilon_trainable': self.epsilon_trainable,
+            })
+        return config
