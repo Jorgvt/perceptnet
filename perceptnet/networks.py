@@ -4,6 +4,8 @@ from tensorflow.keras import layers
 from perceptnet.GDN_Jorge import GDN as GDNJ
 from perceptnet.pearson_loss import PearsonCorrelation
 
+from flayers.layers import RandomGabor
+
 class BasePercetNet(tf.keras.Model):
     def __init__(self, feature_extractor, **kwargs):
         super(BasePercetNet, self).__init__(**kwargs)
@@ -329,3 +331,19 @@ class PerceptNetRegressorFine(tf.keras.Model):
         l2 = tf.sqrt(l2)
         correlation = self.correlation_loss(mos, l2)
         return {'loss':loss, 'pearson':correlation}
+
+class PerceptNetRandomGabor(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetRandomGabor, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                    layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                    layers.MaxPool2D(2),
+                                                    GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
+                                                    layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
+                                                    layers.MaxPool2D(2),
+                                                    GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer),
+                                                    RandomGabor(n_gabors=128, size=20),
+                                                    GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+                                                ]), **kwargs)
+                                                
+        
