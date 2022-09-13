@@ -4,6 +4,45 @@ from tensorflow.keras import layers
 from perceptnet.GDN_Jorge import GDN as GDNJ
 from perceptnet.pearson_loss import PearsonCorrelation
 
+class BasePercetNet(tf.keras.Model):
+    def __init__(self, feature_extractor, **kwargs):
+        super(BasePercetNet, self).__init__(**kwargs)
+        self.feature_extractor = feature_extractor
+    
+    def call(self, X):
+        return self.feature_extractor(X)
+
+    def train_step(self, data):
+        """
+        X: tuple (Original Image, Distorted Image)
+        Y: float (MOS score)
+        """
+
+        img, dist_img, mos = data
+
+        with tf.GradientTape() as tape:
+            features_original = self(img)
+            features_distorted = self(dist_img)
+            l2 = (features_original-features_distorted)**2
+            l2 = tf.reduce_sum(l2, axis=[1,2,3])
+            l2 = tf.sqrt(l2)
+            loss = self.compiled_loss(mos, l2)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        return {'pearson':loss}
+    
+    def test_step(self, data):
+        img, dist_img, mos = data
+        features_original = self(img)
+        features_distorted = self(dist_img)
+        l2 = (features_original-features_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        loss = self.compiled_loss(mos, l2)
+        return {'pearson':loss}
+
 class PerceptNet(tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
         super(PerceptNet, self).__init__()
