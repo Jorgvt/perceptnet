@@ -121,3 +121,34 @@ class GDN(tf.keras.layers.Layer):
         config = {'alpha':self.alpha,
                   'epsilon':self.epsilon}
         return dict(list(base_config.items()) + list(config.items()))
+
+class GDNCustom(layers.Layer):
+    """GDN that takes as input a specific layer to use."""
+
+    def __init__(self,
+                 layer, # Layer to be used to extract the normalization.
+                 alpha=2,
+                 epsilon=1/2,
+                 **kwargs,
+                 ):
+        super(GDNCustom, self).__init__(**kwargs)
+        self.layer = layer
+        self.alpha = alpha
+        self.epsilon = epsilon
+
+    def build(self,
+              input_shape,
+              ):
+        self.layer.build(input_shape)
+        self.alpha = tf.Variable(self.alpha, trainable=False, name="alpha", dtype=tf.float32)
+        self.epsilon = tf.Variable(self.epsilon, trainable=False, name="epsilon", dtype=tf.float32)
+
+    def call(self,
+             X,
+             training=False,
+             ):
+        norm = tf.math.pow(X, self.alpha)
+        norm = self.layer(norm, training=training)
+        norm = tf.clip_by_value(norm, clip_value_min=1e-5, clip_value_max=tf.reduce_max(norm))
+        norm = tf.math.pow(norm, self.epsilon)
+        return X / norm
