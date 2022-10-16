@@ -38,7 +38,8 @@ class BasePercetNet(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
     
     def test_step(self, data):
         img, dist_img, mos = data
@@ -48,7 +49,8 @@ class BasePercetNet(tf.keras.Model):
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
 
 class PerceptNet(tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
@@ -94,7 +96,8 @@ class PerceptNet(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
     
     def test_step(self, data):
         img, dist_img, mos = data
@@ -104,7 +107,8 @@ class PerceptNet(tf.keras.Model):
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
 
 class PerceptNetSeq(tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False):
@@ -143,7 +147,8 @@ class PerceptNetSeq(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
     
     def test_step(self, data):
         img, dist_img, mos = data
@@ -153,7 +158,8 @@ class PerceptNetSeq(tf.keras.Model):
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
 
 class PerceptNetRegressor(tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, avg_pooling=True, features_diff=False):
@@ -396,7 +402,8 @@ class PerceptNetRandomGabor(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
     
     def test_step(self, data):
         img, dist_img, mos = data
@@ -406,7 +413,8 @@ class PerceptNetRandomGabor(tf.keras.Model):
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
 
 
 class PerceptNetFullRandomGabor(BasePercetNet, tf.keras.Model):
@@ -509,7 +517,8 @@ class PerceptNetPatch(tf.keras.Model):
         gradients = tape.gradient(loss, self.trainable_variables)
         self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
 
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
     
     def test_step(self, data):
         img, dist_img, mos = data
@@ -521,4 +530,5 @@ class PerceptNetPatch(tf.keras.Model):
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
-        return {'pearson':loss}
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
