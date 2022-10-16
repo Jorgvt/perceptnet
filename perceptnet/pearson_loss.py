@@ -6,6 +6,10 @@ class PearsonCorrelation(tf.keras.losses.Loss):
     Pearson Correlation Coefficient for a sample.
     """
 
+    def __init__(self, name="pearson", **kwargs):
+        super(PearsonCorrelation, self).__init__()
+        self.name = name
+
     def call(self, y_true, y_pred):
         y_true = tf.squeeze(y_true)
         y_pred = tf.squeeze(y_pred)
