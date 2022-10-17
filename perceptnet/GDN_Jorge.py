@@ -119,8 +119,8 @@ class GDN(tf.keras.layers.Layer):
         saving the layer or a model that contains it.
         """
         base_config = super(GDN, self).get_config()
-        config = {'alpha':self.alpha,
-                  'epsilon':self.epsilon}
+        config = {'alpha':self.alpha.numpy(),
+                  'epsilon':self.epsilon.numpy()}
         return dict(list(base_config.items()) + list(config.items()))
 
 class GDNCustom(layers.Layer):
