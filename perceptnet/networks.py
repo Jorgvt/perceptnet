@@ -8,13 +8,17 @@ from perceptnet.GDN_Jorge import GDN as GDNJ
 from perceptnet.GDN_Jorge import GDNCustom
 from perceptnet.pearson_loss import PearsonCorrelation
 
-from flayers.layers import RandomGabor
+from flayers.layers import RandomGabor, PseudoRandomGabor
 from flayers.center_surround import RandomGaussian
 
 class BasePercetNet(tf.keras.Model):
     def __init__(self, feature_extractor, **kwargs):
         super(BasePercetNet, self).__init__(**kwargs)
         self.feature_extractor = feature_extractor
+
+    @property
+    def layers(self):
+        return self.feature_extractor.layers
     
     def call(self, X, training=False):
         return self.feature_extractor(X, training)
@@ -416,6 +420,64 @@ class PerceptNetRandomGabor(tf.keras.Model):
         self.compiled_metrics.update_state(mos, l2)
         return {m.name: m.result() for m in self.metrics}
 
+class PerceptNetPseudoRandomGabor(tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, normalize=True, n_gabors=128):
+        super(PerceptNetPseudoRandomGabor, self).__init__()
+        self.gdn1 = GDNJ(kernel_size=gdn_kernel_size, apply_independently=True, kernel_initializer=kernel_initializer)
+        self.conv1 = layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same')
+        self.undersampling1 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        self.gdn2 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+        self.conv2 = layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same')
+        self.undersampling2 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        self.gdn3 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+        self.conv3 = PseudoRandomGabor(n_gabors=n_gabors, size=20, normalize=normalize)
+        self.gdn4 = GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
+
+    def call(self, X, training=False):
+        output = self.gdn1(X)
+        output = self.conv1(output)
+        output = self.undersampling1(output)
+        output = self.gdn2(output)
+        output = self.conv2(output)
+        output = self.undersampling2(output)
+        output = self.gdn3(output)
+        output = self.conv3(output, training=training)
+        output = self.gdn4(output)
+        return output
+
+    def train_step(self, data):
+        """
+        X: tuple (Original Image, Distorted Image)
+        Y: float (MOS score)
+        """
+
+        img, dist_img, mos = data
+
+        with tf.GradientTape() as tape:
+            features_original = self(img, training=True)
+            features_distorted = self(dist_img, training=True)
+            l2 = (features_original-features_distorted)**2
+            l2 = tf.reduce_sum(l2, axis=[1,2,3])
+            l2 = tf.sqrt(l2)
+            loss = self.compiled_loss(mos, l2)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
+    
+    def test_step(self, data):
+        img, dist_img, mos = data
+        features_original = self(img, training=False)
+        features_distorted = self(dist_img, training=False)
+        l2 = (features_original-features_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        loss = self.compiled_loss(mos, l2)
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
+
 
 class PerceptNetFullRandomGabor(BasePercetNet, tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
@@ -444,6 +506,22 @@ class PerceptNetGaussianGDN(BasePercetNet, tf.keras.Model):
                                                         layers.MaxPool2D(2),
                                                         GDNCustom(layer=RandomGaussian(filters=6, size=gdn_kernel_size, normalize=True)),
                                                         layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
+                                                        GDNCustom(layer=RandomGaussian(filters=128, size=gdn_kernel_size, normalize=True)),
+                                                ]), **kwargs)
+
+
+class PerceptNetGaussianGDNGaborLast(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetGaussianGDNGaborLast, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                        GDNCustom(layer=RandomGaussian(filters=3, size=gdn_kernel_size, normalize=True)),
+                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=RandomGaussian(filters=3, size=gdn_kernel_size, normalize=True)),
+                                                        layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=RandomGaussian(filters=6, size=gdn_kernel_size, normalize=True)),
+                                                        PseudoRandomGabor(n_gabors=128, size=20, normalize=True),
                                                         GDNCustom(layer=RandomGaussian(filters=128, size=gdn_kernel_size, normalize=True)),
                                                 ]), **kwargs)
 
@@ -527,6 +605,64 @@ class PerceptNetPatch(tf.keras.Model):
         centroids_original = reduce(features_original, 'batch patch h w c -> batch h w c', reduction='mean')
         centroids_distorted = reduce(features_distorted, 'batch patch h w c -> batch h w c', reduction='mean')
         l2 = (centroids_original-centroids_distorted)**2
+        l2 = tf.reduce_sum(l2, axis=[1,2,3])
+        l2 = tf.sqrt(l2)
+        loss = self.compiled_loss(mos, l2)
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
+
+class PerceptNetGDNGaussianGabor(tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, learnable_undersampling=False, normalize=True, n_gabors=128):
+        super(PerceptNetGDNGaussianGabor, self).__init__()
+        self.gdn1 = GDNCustom(layer=RandomGaussian(filters=3, size=gdn_kernel_size, normalize=True)),
+        self.conv1 = layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same')
+        self.undersampling1 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        self.gdn2 = GDNCustom(layer=RandomGaussian(filters=3, size=gdn_kernel_size, normalize=True)),
+        self.conv2 = layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same')
+        self.undersampling2 = layers.DepthwiseConv2D(kernel_size=2, strides=2, padding='valid', depth_multiplier=1, activation='relu') if learnable_undersampling else layers.MaxPool2D(2)
+        self.gdn3 = GDNCustom(layer=RandomGaussian(filters=6, size=gdn_kernel_size, normalize=True)),
+        self.conv3 = PseudoRandomGabor(n_gabors=n_gabors, size=20, normalize=normalize)
+        self.gdn4 = GDNCustom(layer=RandomGaussian(filters=128, size=gdn_kernel_size, normalize=True)),
+
+    def call(self, X, training=False):
+        output = self.gdn1(X)
+        output = self.conv1(output)
+        output = self.undersampling1(output)
+        output = self.gdn2(output)
+        output = self.conv2(output)
+        output = self.undersampling2(output)
+        output = self.gdn3(output)
+        output = self.conv3(output, training=training)
+        output = self.gdn4(output)
+        return output
+
+    def train_step(self, data):
+        """
+        X: tuple (Original Image, Distorted Image)
+        Y: float (MOS score)
+        """
+
+        img, dist_img, mos = data
+
+        with tf.GradientTape() as tape:
+            features_original = self(img, training=True)
+            features_distorted = self(dist_img, training=True)
+            l2 = (features_original-features_distorted)**2
+            l2 = tf.reduce_sum(l2, axis=[1,2,3])
+            l2 = tf.sqrt(l2)
+            loss = self.compiled_loss(mos, l2)
+        
+        gradients = tape.gradient(loss, self.trainable_variables)
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+
+        self.compiled_metrics.update_state(mos, l2)
+        return {m.name: m.result() for m in self.metrics}
+    
+    def test_step(self, data):
+        img, dist_img, mos = data
+        features_original = self(img, training=False)
+        features_distorted = self(dist_img, training=False)
+        l2 = (features_original-features_distorted)**2
         l2 = tf.reduce_sum(l2, axis=[1,2,3])
         l2 = tf.sqrt(l2)
         loss = self.compiled_loss(mos, l2)
