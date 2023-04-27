@@ -495,6 +495,21 @@ class PerceptNetFullRandomGabor(BasePercetNet, tf.keras.Model):
                                                         GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
                                                 ]), **kwargs)
 
+class PerceptNetExpGDNGaussian(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetExpGDNGaussian, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
+                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
+                                                        layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=6, kernel_size=gdn_kernel_size, padding="same")),
+                                                        layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=128, kernel_size=gdn_kernel_size, padding="same")),
+                                                ]), **kwargs)
+
 class PerceptNetExpGaborLast(BasePercetNet, tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
         super(tf.keras.Model, self).__init__(**kwargs)
@@ -540,6 +555,51 @@ class PerceptNetExpCenterSurroundGabor(BasePercetNet, tf.keras.Model):
                                                      GDNJ(kernel_size=gdn_kernel_size, kernel_initializer=kernel_initializer)
                                                 ]), **kwargs)
 
+class PerceptNetExpGDNGaussianGaborLast(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, gabor_kernel_size=21, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetExpGDNGaussianGaborLast, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same", groups=3)),
+                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
+                                                        layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=6, kernel_size=gdn_kernel_size, padding="same")),
+                                                        eflayers.GaborLayer(filters=128, kernel_size=gabor_kernel_size, strides=1, padding="same"),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=128, kernel_size=gdn_kernel_size, padding="same")),
+                                                ]), **kwargs)
+        
+class PerceptNetExpGDNGaussianCenterSurround(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, cs_kernel_size=21, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetExpGDNGaussianCenterSurround, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same", groups=3)),
+                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
+                                                        eflayers.CenterSurroundLayer(filters=6, kernel_size=cs_kernel_size),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=6, kernel_size=gdn_kernel_size, padding="same")),
+                                                        layers.Conv2D(filters=128, kernel_size=5, strides=1, padding="same"),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=128, kernel_size=gdn_kernel_size, padding="same")),
+                                                ]), **kwargs)
+        
+class PerceptNetExpGDNGaussianCenterSurroundGaborLast(BasePercetNet, tf.keras.Model):
+    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, cs_kernel_size=21, gabor_kernel_size=21, **kwargs):
+        super(tf.keras.Model, self).__init__(**kwargs)
+        super(PerceptNetExpGDNGaussianCenterSurroundGaborLast, self).__init__(feature_extractor=tf.keras.Sequential([
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same", groups=3)),
+                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
+                                                        eflayers.CenterSurroundLayer(filters=6, kernel_size=cs_kernel_size),
+                                                        layers.MaxPool2D(2),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=6, kernel_size=gdn_kernel_size, padding="same")),
+                                                        eflayers.GaborLayer(filters=128, kernel_size=gabor_kernel_size, strides=1, padding="same"),
+                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=128, kernel_size=gdn_kernel_size, padding="same")),
+                                                ]), **kwargs)
+
 class PerceptNetGaussianGDN(BasePercetNet, tf.keras.Model):
     def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
         super(tf.keras.Model, self).__init__(**kwargs)
@@ -569,21 +629,6 @@ class PerceptNetGaussianGDNGaborLast(BasePercetNet, tf.keras.Model):
                                                         GDNCustom(layer=RandomGaussian(filters=6, size=gdn_kernel_size, normalize=True)),
                                                         PseudoRandomGabor(n_gabors=128, size=20, normalize=True),
                                                         GDNCustom(layer=RandomGaussian(filters=128, size=gdn_kernel_size, normalize=True)),
-                                                ]), **kwargs)
-
-class PerceptNetExpGDNGaussian(BasePercetNet, tf.keras.Model):
-    def __init__(self, kernel_initializer='identity', gdn_kernel_size=1, **kwargs):
-        super(tf.keras.Model, self).__init__(**kwargs)
-        super(PerceptNetExpGDNGaussian, self).__init__(feature_extractor=tf.keras.Sequential([
-                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
-                                                        layers.Conv2D(filters=3, kernel_size=1, strides=1, padding='same'),
-                                                        layers.MaxPool2D(2),
-                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=3, kernel_size=gdn_kernel_size, padding="same")),
-                                                        layers.Conv2D(filters=6, kernel_size=5, strides=1, padding='same'),
-                                                        layers.MaxPool2D(2),
-                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=6, kernel_size=gdn_kernel_size, padding="same")),
-                                                        layers.Conv2D(filters=128, kernel_size=5, strides=1, padding='same'),
-                                                        GDNCustom(layer=eflayers.GaussianLayer(filters=128, kernel_size=gdn_kernel_size, padding="same")),
                                                 ]), **kwargs)
 
 class PerceptNetExt256(BasePercetNet, tf.keras.Model):
