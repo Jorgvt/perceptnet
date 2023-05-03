@@ -1,0 +1,96 @@
+000 (530705.000.000) 2023-05-02 14:28:34 Job submitted from host: <147.156.116.133:9618?addrs=147.156.116.133-9618&alias=cm02.ific.uv.es&noUDP&sock=schedd_74531_a52f>
+...
+001 (530705.000.000) 2023-05-02 14:28:35 Job executing on host: <147.156.116.153:9618?addrs=147.156.116.153-9618&alias=mlwn11.ific.uv.es&noUDP&sock=startd_3286_804b>
+...
+006 (530705.000.000) 2023-05-02 14:28:44 Image size of job updated: 24384
+	10  -  MemoryUsage of job (MB)
+	9448  -  ResidentSetSize of job (KB)
+...
+006 (530705.000.000) 2023-05-02 14:29:51 Image size of job updated: 11519352
+	10  -  MemoryUsage of job (MB)
+	9448  -  ResidentSetSize of job (KB)
+...
+005 (530705.000.000) 2023-05-02 14:29:51 Job terminated.
+	(1) Normal termination (return value 0)
+		Usr 0 00:00:11, Sys 0 00:00:08  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:11, Sys 0 00:00:08  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :                 1        32 
+	   Disk (KB)            :        1        1 380624274 
+	   Gpus (Average)       :                 1         1 "GPU-5270b1b8"
+	   Memory (MB)          :       10        1    231250 
+
+	Job terminated of its own accord at 2023-05-02T12:29:51Z.
+...
+000 (531356.000.000) 2023-05-03 11:23:52 Job submitted from host: <147.156.116.133:9618?addrs=147.156.116.133-9618&alias=cm02.ific.uv.es&noUDP&sock=schedd_74531_a52f>
+...
+001 (531356.000.000) 2023-05-03 11:23:53 Job executing on host: <147.156.116.151:9618?addrs=147.156.116.151-9618&alias=mlwn09.ific.uv.es&noUDP&sock=startd_3271_3660>
+...
+006 (531356.000.000) 2023-05-03 11:24:00 Image size of job updated: 6432
+	0  -  MemoryUsage of job (MB)
+	0  -  ResidentSetSize of job (KB)
+...
+005 (531356.000.000) 2023-05-03 11:24:00 Job terminated.
+	(1) Normal termination (return value 127)
+		Usr 0 00:00:01, Sys 0 00:00:00  -  Run Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Run Local Usage
+		Usr 0 00:00:01, Sys 0 00:00:00  -  Total Remote Usage
+		Usr 0 00:00:00, Sys 0 00:00:00  -  Total Local Usage
+	0  -  Run Bytes Sent By Job
+	0  -  Run Bytes Received By Job
+	0  -  Total Bytes Sent By Job
+	0  -  Total Bytes Received By Job
+	Partitionable Resources :    Usage  Request Allocated Assigned
+	   Cpus                 :                 1        32 
+	   Disk (KB)            :        1        1 380624290 
+	   Gpus (Average)       :                 1         1 "GPU-10079524"
+	   Memory (MB)          :        0        1    231250 
+
+	Job terminated of its own accord at 2023-05-03T09:24:00Z.
+...
+000 (531357.000.000) 2023-05-03 12:17:17 Job submitted from host: <147.156.116.133:9618?addrs=147.156.116.133-9618&alias=cm02.ific.uv.es&noUDP&sock=schedd_74531_a52f>
+...
+001 (531357.000.000) 2023-05-03 12:17:18 Job executing on host: <147.156.116.149:9618?addrs=147.156.116.149-9618&alias=mlwn07.ific.uv.es&noUDP&sock=startd_3280_62ba>
+...
+006 (531357.000.000) 2023-05-03 12:17:26 Image size of job updated: 11736
+	10  -  MemoryUsage of job (MB)
+	9556  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:22:26 Image size of job updated: 74341400
+	5910  -  MemoryUsage of job (MB)
+	6051216  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:27:27 Image size of job updated: 74341400
+	6001  -  MemoryUsage of job (MB)
+	6144652  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:37:27 Image size of job updated: 74341400
+	6003  -  MemoryUsage of job (MB)
+	6147060  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:42:28 Image size of job updated: 74341400
+	6006  -  MemoryUsage of job (MB)
+	6149248  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:47:28 Image size of job updated: 74341400
+	6006  -  MemoryUsage of job (MB)
+	6149288  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 12:52:28 Image size of job updated: 74341400
+	6006  -  MemoryUsage of job (MB)
+	6149404  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 13:02:29 Image size of job updated: 74341400
+	6008  -  MemoryUsage of job (MB)
+	6151772  -  ResidentSetSize of job (KB)
+...
+006 (531357.000.000) 2023-05-03 13:07:29 Image size of job updated: 74341400
+	6008  -  MemoryUsage of job (MB)
+	6151856  -  ResidentSetSize of job (KB)
+...

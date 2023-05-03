@@ -1,0 +1,4 @@
+Could not find conda environment: jax
+You can list all discoverable environments with `conda info --envs`.
+
+/lhome/ext/uv075/uv0752/perceptnet/Notebooks/13_JaX/run_nb.sh: línea 4: exec_nb: no se encontró la orden
