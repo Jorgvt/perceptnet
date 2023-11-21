@@ -1,5 +1,5 @@
 */logs/*
 */wandb/*
 */artifacts/*
-*run.sh
-*run.sub
+**/run.sh
+**/run.sub
