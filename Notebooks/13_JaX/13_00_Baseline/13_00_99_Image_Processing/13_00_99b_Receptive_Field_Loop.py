@@ -299,7 +299,7 @@ name = "PerceptNet"
 
 # %%
 final_imgs = []
-for FILTER_IDX in tqdm(range(state.params["Conv_2"]["kernel"].shape[-1])):
+for FILTER_IDX in tqdm(range(state.params[layer_name]["kernel"].shape[-1])):
     # Generate the input image
     img = NOISE_VAR*random.uniform(random.PRNGKey(42), shape=IMG_SIZE)
 
