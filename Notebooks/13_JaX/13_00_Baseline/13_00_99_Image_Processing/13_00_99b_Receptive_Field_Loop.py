@@ -299,7 +299,8 @@ name = "PerceptNet"
 
 # %%
 final_imgs = []
-for FILTER_IDX in tqdm(range(state.params[layer_name]["kernel"].shape[-1])):
+N_iters = state.params[layer_name]["kernel"].shape[-1] if "GDN" not in layer_name else state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+for FILTER_IDX in tqdm(range(N_iters)):
     # Generate the input image
     img = NOISE_VAR*random.uniform(random.PRNGKey(42), shape=IMG_SIZE)
 
@@ -321,7 +322,10 @@ for FILTER_IDX in tqdm(range(state.params[layer_name]["kernel"].shape[-1])):
     fig, axes = plt.subplots(1,4, figsize=(18,4))
     axes[0].imshow(imgs[0][0])
     axes[1].imshow(img[0])
-    axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
+    if "GDN" not in layer_name:
+        axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
+    else:
+        axes[2].imshow(state.params[layer_name]["Conv_0"]["kernel"][...,0,FILTER_IDX])
     axes[3].plot(losses)
     axes[0].set_title(f"{imgs[0].min():.2f} / {imgs[0].max():.2f}")
     axes[1].set_title(f"{img.min():.2f} / {img.max():.2f}")
@@ -336,7 +340,8 @@ for FILTER_IDX in tqdm(range(state.params[layer_name]["kernel"].shape[-1])):
 
 # %%
 from pickle import dump
-with open(os.path.join(save_path, "/final_imgs.pkl"), "wb") as f:
+print(os.path.join(save_path, "final_imgs.pkl"))
+with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
     dump(final_imgs, f)
 
 # %%
@@ -344,7 +349,7 @@ fig, axes = plt.subplots(16,8)
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
     ax.axis("off")
-plt.savefig(os.path.join(save_path, "/final_imgs.pkl"), dpi=300)
+plt.savefig(os.path.join(save_path, "final_imgs.png"), dpi=300)
 plt.show()
 
 
