@@ -8,6 +8,7 @@
 import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 from tqdm.auto import tqdm
+import argparse
 
 from typing import Any, Callable, Sequence, Union
 import numpy as np
@@ -45,10 +46,20 @@ from JaxPlayground.utils.wandb import *
 # %%
 import matplotlib.pyplot as plt
 
+
+parser = argparse.ArgumentParser(description="Obtaining Receptive Fields",
+                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument("-p", "--path", help="Path to save the figures.")
+parser.add_argument("-l", "--layer", help="Layer to obtain the receptive fields from.")
+
+args = parser.parse_args()
+config = vars(args)
+print(config)
+
 # %%
 id = "9wt4n5j8" # Baseline
-save_path = "Receptive_Fields/Gabor"
-layer_name = "Conv_2"
+save_path = config["path"]
+layer_name = config["layer"]
 
 # %%
 api = wandb.Api()
@@ -76,14 +87,20 @@ class PerceptNet(nn.Module):
                  **kwargs,
                  ):
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=True)(inputs)
+        if layer_name == "DN_0": return outputs
         outputs = nn.Conv(features=3, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
+        if layer_name == "Conv_0": return outputs
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
+        if layer_name == "DN_1": return outputs
         outputs = nn.Conv(features=6, kernel_size=(5,5), strides=1, padding="SAME")(outputs)
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
+        if layer_name == "Conv_1": return outputs
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
+        if layer_name == "DN_2": return outputs
         outputs = nn.Conv(features=128, kernel_size=(5,5), strides=1, padding="SAME")(outputs)
-        # outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
+        if layer_name == "Conv_2": return outputs
+        outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
         return outputs
 
 # %% [markdown]
