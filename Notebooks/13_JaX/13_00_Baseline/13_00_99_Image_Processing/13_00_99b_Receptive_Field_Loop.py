@@ -347,7 +347,12 @@ with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
     dump(final_imgs, f)
 
 # %%
-fig, axes = plt.subplots(16,8)
+if layer_name not in ["Conv_2", "GDN_3"]:
+    N = state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+    fig, axes = plt.subplots(1,N)
+else:
+    N = state.params[layer_name]["kernel"].shape[-1]
+    fig, axes = plt.subplots(16,8)
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
     ax.axis("off")
