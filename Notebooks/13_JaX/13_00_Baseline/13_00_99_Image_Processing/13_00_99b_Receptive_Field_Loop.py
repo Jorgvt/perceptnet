@@ -47,6 +47,8 @@ import matplotlib.pyplot as plt
 
 # %%
 id = "9wt4n5j8" # Baseline
+save_path = "Receptive_Fields/Gabor"
+layer_name = "Conv_2"
 
 # %%
 api = wandb.Api()
@@ -81,7 +83,7 @@ class PerceptNet(nn.Module):
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
         outputs = nn.Conv(features=128, kernel_size=(5,5), strides=1, padding="SAME")(outputs)
-        outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
+        # outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
         return outputs
 
 # %% [markdown]
@@ -256,13 +258,6 @@ IMG_SIZE = (1, 256, 256, 3)
 BORDER = 4
 FILTER_IDX = 3
 NOISE_VAR = 0.25
-try:
-    filt = state.params["Conv_2"]["kernel"][...,0,FILTER_IDX]
-    print("Gabor")
-except:
-    filt = state.params["Conv_1"]["kernel"][...,0,FILTER_IDX]
-    print("Center Surround")
-filt.shape
 
 # %% [markdown]
 # Define the optimization loop:
@@ -309,14 +304,14 @@ for FILTER_IDX in tqdm(range(state.params["Conv_2"]["kernel"].shape[-1])):
     fig, axes = plt.subplots(1,4, figsize=(18,4))
     axes[0].imshow(imgs[0][0])
     axes[1].imshow(img[0])
-    axes[2].imshow(state.params["Conv_2"]["kernel"][...,0,FILTER_IDX])
+    axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
     axes[3].plot(losses)
     axes[0].set_title(f"{imgs[0].min():.2f} / {imgs[0].max():.2f}")
     axes[1].set_title(f"{img.min():.2f} / {img.max():.2f}")
     axes[3].set_title(name)
     # break
     ## Save the figure
-    plt.savefig(f"Receptive_Fields/optim_result_{FILTER_IDX}.png", dpi=300)
+    plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
     plt.show()
 
     ## Store the final images
@@ -324,7 +319,7 @@ for FILTER_IDX in tqdm(range(state.params["Conv_2"]["kernel"].shape[-1])):
 
 # %%
 from pickle import dump
-with open("Receptive_Fields/final_imgs.pkl", "wb") as f:
+with open(os.path.join(save_path, "/final_imgs.pkl"), "wb") as f:
     dump(final_imgs, f)
 
 # %%
@@ -332,7 +327,7 @@ fig, axes = plt.subplots(16,8)
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
     ax.axis("off")
-plt.savefig("Receptive_Fields/final_imgs_mosaic.png", dpi=300)
+plt.savefig(os.path.join(save_path, "/final_imgs.pkl"), dpi=300)
 plt.show()
 
 
