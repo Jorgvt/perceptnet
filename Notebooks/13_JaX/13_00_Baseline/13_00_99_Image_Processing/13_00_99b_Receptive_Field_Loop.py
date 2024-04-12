@@ -51,7 +51,7 @@ parser = argparse.ArgumentParser(description="Obtaining Receptive Fields",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-p", "--path", help="Path to save the figures.")
 parser.add_argument("-l", "--layer", help="Layer to obtain the receptive fields from.")
-parser.add_argument("-N", "--N-iter", dest="N_iter", type=int, help="Number of iterations to optimize the receptive field")
+parser.add_argument("-N", "--N-iter", dest="N_iter", default=20000, type=int, help="Number of iterations to optimize the receptive field")
 
 args = parser.parse_args()
 config = vars(args)
