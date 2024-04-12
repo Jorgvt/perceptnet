@@ -329,7 +329,7 @@ for FILTER_IDX in tqdm(range(state.params["Conv_2"]["kernel"].shape[-1])):
     # break
     ## Save the figure
     plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
-    plt.show()
+    plt.close()
 
     ## Store the final images
     final_imgs.append(imgs[-1])
