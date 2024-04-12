@@ -51,6 +51,7 @@ parser = argparse.ArgumentParser(description="Obtaining Receptive Fields",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-p", "--path", help="Path to save the figures.")
 parser.add_argument("-l", "--layer", help="Layer to obtain the receptive fields from.")
+parser.add_argument("-N", "--N-iter", dest="N_iter", type=int, help="Number of iterations to optimize the receptive field")
 
 args = parser.parse_args()
 config = vars(args)
@@ -60,6 +61,7 @@ print(config)
 id = "9wt4n5j8" # Baseline
 save_path = config["path"]
 layer_name = config["layer"]
+EPOCHS = config["N_iter"]
 
 # %%
 api = wandb.Api()
@@ -273,7 +275,7 @@ def compute_distance(state, img1, img2):
 # %%
 IMG_SIZE = (1, 256, 256, 3)
 BORDER = 4
-FILTER_IDX = 3
+# FILTER_IDX = 3
 NOISE_VAR = 0.25
 
 # %% [markdown]
@@ -293,7 +295,7 @@ def optim_step(state, tx, tx_state, img):
     return img, loss, tx_state
 
 # %%
-EPOCHS = 20000
+# EPOCHS = config["N_iter"]
 LEARNING_RATE = 3e-4
 name = "PerceptNet"
 
