@@ -51,7 +51,10 @@ parser = argparse.ArgumentParser(description="Obtaining Receptive Fields",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-p", "--path", help="Path to save the figures.")
 parser.add_argument("-l", "--layer", help="Layer to obtain the receptive fields from.")
-parser.add_argument("-N", "--N-iter", dest="N_iter", default=20000, type=int, help="Number of iterations to optimize the receptive field")
+parser.add_argument("-N", "--N-iter", dest="N_iter", default=20000, type=int, help="Number of iterations to optimize the receptive field.")
+parser.add_argument("-b", "--border", default=4, type=int, help="Border pixels to ignore.")
+parser.add_argument("--min-max", dest="min_max", action="store_false", help="Maximize the output of a channel while minimizing the output of the others.")
+parser.add_argument("--testing", action="store_false", help="Don't save anything.")
 
 args = parser.parse_args()
 config = vars(args)
@@ -62,6 +65,9 @@ id = "3r6cs5fi" # 128 Gabor_Free_A_GDNGamma_J&HTrained_CS-GaussFixed_GaborFixed
 save_path = config["path"]
 layer_name = config["layer"]
 EPOCHS = config["N_iter"]
+BORDER = config["border"]
+MIN_MAX = config["min_max"]
+TESTING = config["testing"]
 
 # %%
 api = wandb.Api()
@@ -393,7 +399,6 @@ def compute_distance(state, img1, img2):
 
 # %%
 IMG_SIZE = (1, 256, 256, 3)
-BORDER = 4
 # FILTER_IDX = 3
 NOISE_VAR = 0.25
 
@@ -407,7 +412,12 @@ def optim_step(state, tx, tx_state, img):
         def forward(state, inputs): return state.apply_fn({"params": state.params, **state.state}, inputs, train=False)
         pred = forward(state, img)
         b, h, w, c = pred.shape
-        return -(pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean() # Change sign because we want to maximize
+        if MIN_MAX: 
+            channel_output = (pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean()
+            idxs = jnp.arange(pred.shape[-1])
+            other_channels_output = (pred[...,BORDER:h-BORDER, BORDER:w-BORDER, ~(idxs==FILTER_IDX)]**2).mean()
+            return -channel_output + other_channels_output
+        else: return -(pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean() # Change sign because we want to maximize
     loss, grads = jax.value_and_grad(loss_fn)(img)
     updates, tx_state = tx.update(grads, tx_state)
     img = optax.apply_updates(img, updates=updates)
@@ -422,7 +432,8 @@ name = "PerceptNet"
 final_imgs = []
 
 try:
-    N_iters = state.params[layer_name]["kernel"].shape[-1] if "GDN" not in layer_name else state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+    if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
+    else: N_iters = state.params[layer_name]["kernel"].shape[-1] if "GDN" not in layer_name else state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
 except:
     N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
 for FILTER_IDX in tqdm(range(N_iters)):
@@ -461,17 +472,18 @@ for FILTER_IDX in tqdm(range(N_iters)):
     axes[3].set_title(name)
     # break
     ## Save the figure
-    plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
+    if not TESTING: plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
     plt.close()
 
     ## Store the final images
     final_imgs.append(imgs[-1])
 
 # %%
-from pickle import dump
-print(os.path.join(save_path, "final_imgs.pkl"))
-with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
-    dump(final_imgs, f)
+if not TESTING: 
+    from pickle import dump
+    print(os.path.join(save_path, "final_imgs.pkl"))
+    with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
+        dump(final_imgs, f)
 
 # %%
 if "Gabor" not in layer_name or "SpatioFreq" not in layer_name:
@@ -484,7 +496,7 @@ else:
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
     ax.axis("off")
-plt.savefig(os.path.join(save_path, "final_imgs.png"), dpi=300)
+if not TESTING: plt.savefig(os.path.join(save_path, "final_imgs.png"), dpi=300)
 plt.show()
 
 
