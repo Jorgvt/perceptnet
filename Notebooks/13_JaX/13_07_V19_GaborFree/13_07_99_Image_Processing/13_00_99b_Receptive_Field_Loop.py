@@ -414,8 +414,8 @@ def optim_step(state, tx, tx_state, img):
         b, h, w, c = pred.shape
         if MIN_MAX: 
             channel_output = (pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean()
-            idxs = jnp.arange(pred.shape[-1])
-            other_channels_output = (pred[...,BORDER:h-BORDER, BORDER:w-BORDER, ~(idxs==FILTER_IDX)]**2).mean()
+            other_channels_output = pred.at[...,FILTER_IDX].set(0)
+            other_channels_output = (other_channels_output[...,BORDER:h-BORDER, BORDER:w-BORDER,:]**2).mean()
             return -channel_output + other_channels_output
         else: return -(pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean() # Change sign because we want to maximize
     loss, grads = jax.value_and_grad(loss_fn)(img)
