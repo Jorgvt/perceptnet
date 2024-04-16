@@ -431,13 +431,13 @@ name = "PerceptNet"
 # %%
 final_imgs = []
 
-try:
-    if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
-    elif "Gamma" in layer_name: N_iters = 3
-    elif "GDN" not in layer_name: N_iters = state.params[layer_name]["kernel"].shape[-1]
-    else: state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
-except:
-    N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
+if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
+elif "GDNGamma" in layer_name: N_iters = 3
+elif "Gaussian" in layer_name: N_iters = len(state.params[layer_name]["gamma"])
+elif "CenterSurround" in layer_name or "Gabor" in layer_name: N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
+elif "GDN" not in layer_name: N_iters = state.params[layer_name]["kernel"].shape[-1]
+else: N_iters = state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+
 for FILTER_IDX in tqdm(range(N_iters)):
     # Generate the input image
     img = NOISE_VAR*random.uniform(random.PRNGKey(42), shape=IMG_SIZE)
