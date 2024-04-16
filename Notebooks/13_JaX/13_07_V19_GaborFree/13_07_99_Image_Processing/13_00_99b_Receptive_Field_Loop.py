@@ -451,6 +451,8 @@ for FILTER_IDX in tqdm(range(N_iters)):
         axes[2].imshow(state.state["precalc_filter"][layer_name]["kernel"][...,0,FILTER_IDX])
     elif "GDN" not in layer_name:
         axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
+    elif "GDNSpatioFreqOrient" in layer_name:
+        pass
     else:
         axes[2].imshow(state.params[layer_name]["Conv_0"]["kernel"][...,0,FILTER_IDX])
     axes[3].plot(losses)
@@ -472,11 +474,12 @@ with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
     dump(final_imgs, f)
 
 # %%
-if layer_name not in ["Conv_2", "GDN_3"]:
-    N = state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+if "Gabor" not in layer_name or "SpatioFreq" not in layer_name:
+    N = 3
     fig, axes = plt.subplots(1,N)
 else:
     N = state.params[layer_name]["kernel"].shape[-1]
+    N = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
     fig, axes = plt.subplots(16,8)
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
