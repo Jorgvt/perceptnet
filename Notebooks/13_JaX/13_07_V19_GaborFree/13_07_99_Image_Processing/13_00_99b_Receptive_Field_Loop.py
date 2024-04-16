@@ -433,7 +433,9 @@ final_imgs = []
 
 try:
     if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
-    else: N_iters = state.params[layer_name]["kernel"].shape[-1] if "GDN" not in layer_name else state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
+    elif "Gamma" in layer_name: N_iters = 3
+    elif "GDN" not in layer_name: N_iters = state.params[layer_name]["kernel"].shape[-1]
+    else: state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
 except:
     N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
 for FILTER_IDX in tqdm(range(N_iters)):
