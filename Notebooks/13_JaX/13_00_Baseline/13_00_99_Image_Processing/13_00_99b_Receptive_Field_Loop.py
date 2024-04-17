@@ -51,21 +51,29 @@ parser = argparse.ArgumentParser(description="Obtaining Receptive Fields",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("-p", "--path", help="Path to save the figures.")
 parser.add_argument("-l", "--layer", help="Layer to obtain the receptive fields from.")
-parser.add_argument("-N", "--N-iter", dest="N_iter", default=20000, type=int, help="Number of iterations to optimize the receptive field")
+parser.add_argument("-N", "--N-iter", dest="N_iter", default=20000, type=int, help="Number of iterations to optimize the receptive field.")
+parser.add_argument("-b", "--border", default=4, type=int, help="Border pixels to ignore.")
+parser.add_argument("--min-max", dest="min_max", action="store_true", help="Maximize the output of a channel while minimizing the output of the others.")
+parser.add_argument("--testing", action="store_true", help="Don't save anything.")
 
 args = parser.parse_args()
 config = vars(args)
 print(config)
 
 # %%
-id = "9wt4n5j8" # Baseline
+# id = "9wt4n5j8" # Baseline
+id = "to9i9tly" # Baseline_SameSizes
 save_path = config["path"]
 layer_name = config["layer"]
 EPOCHS = config["N_iter"]
+BORDER = config["border"]
+MIN_MAX = config["min_max"]
+TESTING = config["testing"]
 
 # %%
 api = wandb.Api()
-prev_run = api.run(f"jorgvt/PerceptNet_JaX/{id}")
+# prev_run = api.run(f"jorgvt/PerceptNet_JaX/{id}")
+prev_run = api.run(f"jorgvt/PerceptNet_v15/{id}")
 
 # %%
 config = ConfigDict(prev_run.config["_fields"])
@@ -89,20 +97,20 @@ class PerceptNet(nn.Module):
                  **kwargs,
                  ):
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=True)(inputs)
-        if layer_name == "DN_0": return outputs
+        if layer_name == "GDN_0": return outputs
         outputs = nn.Conv(features=3, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
         if layer_name == "Conv_0": return outputs
         outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
-        if layer_name == "DN_1": return outputs
-        outputs = nn.Conv(features=6, kernel_size=(5,5), strides=1, padding="SAME")(outputs)
+        if layer_name == "GDN_1": return outputs
+        outputs = nn.Conv(features=6, kernel_size=(config.CS_KERNEL_SIZE,config.CS_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
         if layer_name == "Conv_1": return outputs
-        outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
-        if layer_name == "DN_2": return outputs
-        outputs = nn.Conv(features=128, kernel_size=(5,5), strides=1, padding="SAME")(outputs)
+        outputs = GDN(kernel_size=config.GDNGAUSSIAN_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
+        if layer_name == "GDN_2": return outputs
+        outputs = nn.Conv(features=config.N_GABORS, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         if layer_name == "Conv_2": return outputs
-        outputs = GDN(kernel_size=1, strides=1, padding="SAME", apply_independently=False)(outputs)
+        outputs = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
         return outputs
 
 # %% [markdown]
@@ -274,7 +282,6 @@ def compute_distance(state, img1, img2):
 
 # %%
 IMG_SIZE = (1, 256, 256, 3)
-BORDER = 4
 # FILTER_IDX = 3
 NOISE_VAR = 0.25
 
@@ -288,7 +295,12 @@ def optim_step(state, tx, tx_state, img):
         def forward(state, inputs): return state.apply_fn({"params": state.params, **state.state}, inputs, train=False)
         pred = forward(state, img)
         b, h, w, c = pred.shape
-        return -(pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean() # Change sign because we want to maximize
+        if MIN_MAX: 
+            channel_output = (pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean()
+            other_channels_output = pred.at[...,FILTER_IDX].set(0)
+            other_channels_output = (other_channels_output[...,BORDER:h-BORDER, BORDER:w-BORDER,:]**2).mean()
+            return -channel_output + other_channels_output
+        else: return -(pred[...,BORDER:h-BORDER, BORDER:w-BORDER, FILTER_IDX]**2).mean() # Change sign because we want to maximize
     loss, grads = jax.value_and_grad(loss_fn)(img)
     updates, tx_state = tx.update(grads, tx_state)
     img = optax.apply_updates(img, updates=updates)
@@ -334,29 +346,32 @@ for FILTER_IDX in tqdm(range(N_iters)):
     axes[3].set_title(name)
     # break
     ## Save the figure
-    plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
+    if not TESTING: plt.savefig(f"{save_path}/optim_result_{FILTER_IDX}.png", dpi=300)
     plt.close()
 
     ## Store the final images
     final_imgs.append(imgs[-1])
 
 # %%
-from pickle import dump
-print(os.path.join(save_path, "final_imgs.pkl"))
-with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
-    dump(final_imgs, f)
+if not TESTING:
+    from pickle import dump
+    print(os.path.join(save_path, "final_imgs.pkl"))
+    with open(os.path.join(save_path, "final_imgs.pkl"), "wb") as f:
+        dump(final_imgs, f)
 
 # %%
-if layer_name not in ["Conv_2", "GDN_3"]:
+if "GDN" in layer_name:
     N = state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
-    fig, axes = plt.subplots(1,N)
 else:
     N = state.params[layer_name]["kernel"].shape[-1]
-    fig, axes = plt.subplots(16,8)
+
+if N < 10: fig, axes = plt.subplots(1,N)
+else: fig, axes = plt.subplots(16,8)
+
 for rf, ax in zip(final_imgs, axes.ravel()):
     ax.imshow(rf[0])
     ax.axis("off")
-plt.savefig(os.path.join(save_path, "final_imgs.png"), dpi=300)
+if not TESTING: plt.savefig(os.path.join(save_path, "final_imgs.png"), dpi=300)
 plt.show()
 
 
