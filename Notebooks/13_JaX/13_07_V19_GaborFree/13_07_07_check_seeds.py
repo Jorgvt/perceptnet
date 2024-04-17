@@ -1,17 +1,17 @@
+import os
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
+from typing import Any, Callable, Sequence, Union
+from tqdm.auto import tqdm
+import numpy as np
+import scipy.stats as stats
+
 import tensorflow as tf
 tf.config.set_visible_devices([], device_type='GPU')
 
-import os
-from typing import Any, Callable, Sequence, Union
-from tqdm.auto import tqdm
-
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
-import scipy.stats as stats
-
 import jax
 from jax import lax, random, numpy as jnp
+import flax
 from flax.core import freeze, unfreeze, FrozenDict
 from flax import linen as nn
 from flax import struct
@@ -24,19 +24,21 @@ import orbax.checkpoint
 from clu import metrics
 from ml_collections import ConfigDict
 
-from einops import reduce
+from einops import reduce, rearrange
 import wandb
 from iqadatasets.datasets import *
 from fxlayers.layers import *
+from fxlayers.layers import GaussianLayerGamma, FreqGaussianGamma, OrientGaussianGamma
+from fxlayers.initializers import *
 from JaxPlayground.utils.constraints import *
 from JaxPlayground.utils.wandb import *
 
-# dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
-# dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
+dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
+dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
 # dst_train = TID2008("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
 # dst_val = TID2013("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
-dst_train = TID2008("/media/databases/IQA/TID/TID2008/", exclude_imgs=[25])
-dst_val = TID2013("/media/databases/IQA/TID/TID2013/", exclude_imgs=[25])
+# dst_train = TID2008("/media/databases/IQA/TID/TID2008/", exclude_imgs=[25])
+# dst_val = TID2013("/media/databases/IQA/TID/TID2013/", exclude_imgs=[25])
 
 img, img_dist, mos = next(iter(dst_train.dataset))
 img.shape, img_dist.shape, mos.shape
