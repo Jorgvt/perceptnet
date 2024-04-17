@@ -5,6 +5,8 @@ from typing import Any, Callable, Sequence, Union
 from tqdm.auto import tqdm
 import numpy as np
 import scipy.stats as stats
+import pandas as pd
+import matplotlib.pyplot as plt
 
 import tensorflow as tf
 tf.config.set_visible_devices([], device_type='GPU')
