@@ -35,6 +35,7 @@ parser = argparse.ArgumentParser(description="Trainig a very simple model on TID
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--mse", action="store_true", help="Use MSE")
 parser.add_argument("--kld", action="store_true", help="Use KLD")
+parser.add_argument("--js", action="store_true", help="Use JS")
 parser.add_argument("--testing", action="store_true", help="Perform only one batch of training and one of validation.")
 parser.add_argument("--wandb", default="disabled", help="WandB mode.")
 
@@ -96,7 +97,7 @@ class PerceptNet(nn.Module):
                  **kwargs,
                  ):
         outputs = rearrange(inputs, "b h w c -> b (h w c)")
-        if args["kld"]:
+        if args["kld"] or args["js"]:
             mean = nn.Dense(features=2)(outputs)
             std = nn.Dense(features=2)(outputs)
             return mean, std
@@ -145,17 +146,21 @@ def kld(mean_p, std_p, mean_q, std_q, axis=(1)):
     
     return jnp.log(safe_div(det_p, det_q)) + jnp.sum((1/std_q)*(mean_p - mean_q)**2, axis=axis) + jnp.sum(std_p/std_q, axis=axis)
 
+def js(mean_p, std_p, mean_q, std_q, axis=(1)):
+    return (1/2)*(kld(mean_p, std_p, mean_q, std_q, axis) + kld(mean_q, std_q, mean_p, std_p, axis))
+
 @jax.jit
 def train_step(state, batch):
     """Train for a single step."""
     img, img_dist, mos = batch
     def loss_fn(params):
         ## Forward pass through the model
-        if args["kld"]:
+        if args["kld"] or args["js"]:
             (img_mean, img_std), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
             (img_dist_mean, img_dist_std), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
             ## Calculate the KLD
-            dist = kld(img_mean, img_std, img_dist_mean, img_dist_std)
+            if args["kld"]: dist = kld(img_mean, img_std, img_dist_mean, img_dist_std)
+            if args["js"]: dist = js(img_mean, img_std, img_dist_mean, img_dist_std)
         
         elif args["mse"]:
             img_pred, updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
@@ -180,11 +185,12 @@ def compute_metrics(*, state, batch):
     img, img_dist, mos = batch
     def loss_fn(params):
         ## Forward pass through the model
-        if args["kld"]:
+        if args["kld"] or args["js"]:
             (img_mean, img_std), updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
             (img_dist_mean, img_dist_std), updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
             ## Calculate the KLD
-            dist = kld(img_mean, img_std, img_dist_mean, img_dist_std)
+            if args["kld"]: dist = kld(img_mean, img_std, img_dist_mean, img_dist_std)
+            if args["js"]: dist = js(img_mean, img_std, img_dist_mean, img_dist_std)
         
         elif args["mse"]:
             img_pred, updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
