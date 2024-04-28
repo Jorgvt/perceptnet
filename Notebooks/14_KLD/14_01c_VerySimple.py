@@ -43,6 +43,15 @@ parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
 args = parser.parse_args()
 args = vars(args)
 
+if args["kld"]:
+    METRIC = "KLD"
+elif args["js"]:
+    METRIC = "JS"
+elif args["mse"]:
+    METRIC = "MSE"
+else:
+    METRIC = None
+
 # dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
 # dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
 # dst_train = TID2008("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
@@ -61,6 +70,7 @@ config = {
     "EPOCHS": 30,
     "LEARNING_RATE": 3e-4,
     "SEED": 42,
+    "METRIC": METRIC,
 }
 config = ConfigDict(config)
 config
