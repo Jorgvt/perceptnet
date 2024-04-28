@@ -76,7 +76,7 @@ config = ConfigDict(config)
 config
 
 wandb.init(project="PerceptNet_KLD",
-           name=args["name"],
+           name=args["run_name"],
            job_type="training",
            config=config,
            mode=args["wandb"],
@@ -237,7 +237,7 @@ state = state.replace(params=clip_layer(state.params, "GDN", a_min=0))
 
 param_count = sum(x.size for x in jax.tree_util.tree_leaves(state.params))
 trainable_param_count = sum([w.size if t=="trainable" else 0 for w, t in zip(jax.tree_util.tree_leaves(state.params), jax.tree_util.tree_leaves(trainable_tree))])
-param_count, trainable_param_count
+print(f"Total params: {param_count} | Trainable params: {trainable_param_count}")
 
 wandb.run.summary["total_parameters"] = param_count
 wandb.run.summary["trainable_parameters"] = trainable_param_count
