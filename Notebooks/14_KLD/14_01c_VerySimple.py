@@ -39,6 +39,7 @@ parser.add_argument("--js", action="store_true", help="Use JS")
 parser.add_argument("--testing", action="store_true", help="Perform only one batch of training and one of validation.")
 parser.add_argument("--wandb", default="disabled", help="WandB mode.")
 parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
+parser.add_argument("-e", "--epochs", type=int, default=30, help="Number of training epochs.")
 
 args = parser.parse_args()
 args = vars(args)
@@ -67,7 +68,7 @@ img.shape, img_dist.shape, mos.shape
 
 config = {
     "BATCH_SIZE": 32,
-    "EPOCHS": 30,
+    "EPOCHS": args["epochs"],
     "LEARNING_RATE": 3e-4,
     "SEED": 42,
     "METRIC": METRIC,
