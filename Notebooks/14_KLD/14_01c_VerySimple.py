@@ -38,6 +38,7 @@ parser.add_argument("--kld", action="store_true", help="Use KLD")
 parser.add_argument("--js", action="store_true", help="Use JS")
 parser.add_argument("--testing", action="store_true", help="Perform only one batch of training and one of validation.")
 parser.add_argument("--wandb", default="disabled", help="WandB mode.")
+parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
 
 args = parser.parse_args()
 args = vars(args)
@@ -65,7 +66,7 @@ config = ConfigDict(config)
 config
 
 wandb.init(project="PerceptNet_KLD",
-           name="Baseline_SameSizes",
+           name=args["name"],
            job_type="training",
            config=config,
            mode=args["wandb"],
