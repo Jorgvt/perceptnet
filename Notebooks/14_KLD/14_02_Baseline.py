@@ -124,8 +124,9 @@ class PerceptNet(nn.Module):
         outputs = nn.Conv(features=config.N_GABORS, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         if args["kld"] or args["js"]:
             mean = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-            std = nn.Conv(features=config.N_GABORS, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
-            std = -nn.relu(std)
+            std = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
+            # std = nn.Conv(features=config.N_GABORS, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
+            # std = -nn.relu(std)
             return mean, std
         elif args["mse"]:
             return GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
@@ -165,12 +166,13 @@ def pearson_correlation(vec1, vec2):
 
 def kld(mean_p, std_p, mean_q, std_q, axis=(1,2,3)):
     """Assume diagonal covariance matrix and that the input is the logvariance."""
+    logstd_p, logstd_q = std_p, std_q
     std_p, std_q = jnp.exp(std_p), jnp.exp(std_q)
     def safe_div(a, b): return a/b #jnp.where(a == b, 1, a/b)
-    det_p = jnp.prod(std_p, axis=axis) + 1e-5
-    det_q = jnp.prod(std_q, axis=axis) + 1e-5
+    logdet_p = jnp.sum(logstd_p, axis=axis)
+    logdet_q = jnp.sum(logstd_q, axis=axis)
     
-    return jnp.log(safe_div(det_p, det_q)) + jnp.sum((1/std_q)*(mean_p - mean_q)**2, axis=axis) + jnp.sum(std_p/std_q, axis=axis)
+    return (logdet_q - logdet_p) + jnp.sum((1/std_q)*(mean_p - mean_q)**2, axis=axis) + jnp.sum(std_p/std_q, axis=axis)
 
 def js(mean_p, std_p, mean_q, std_q, axis=(1,2,3)):
     return (1/2)*(kld(mean_p, std_p, mean_q, std_q, axis) + kld(mean_q, std_q, mean_p, std_p, axis))
