@@ -41,6 +41,7 @@ parser.add_argument("--wandb", default="disabled", help="WandB mode.")
 parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
 parser.add_argument("-e", "--epochs", type=int, default=30, help="Number of training epochs.")
 parser.add_argument("-b", "--batch-size", type=int, default=16, help="Number of samples per batch.")
+parser.add_argument("--lambda", type=float, default=0., help="Lambda coefficient to weight regularization.")
 
 args = parser.parse_args()
 args = vars(args)
@@ -79,6 +80,7 @@ config = {
     "N_GABORS": 128,
     "GABOR_KERNEL_SIZE": 5,
     "GDNSPATIOFREQ_KERNEL_SIZE": 1,
+    "LAMBDA": args["lambda"],
 }
 config = ConfigDict(config)
 config
@@ -136,6 +138,7 @@ class PerceptNet(nn.Module):
 class Metrics(metrics.Collection):
     """Collection of metrics to be tracked during training."""
     loss: metrics.Average.from_output("loss")
+    regularization: metrics.Average.from_output("regularization")
 
 class TrainState(train_state.TrainState):
     metrics: Metrics
@@ -190,19 +193,21 @@ def train_step(state, batch):
             ## Calculate the KLD
             if args["kld"]: dist = kld(img_mean, img_std, img_dist_mean, img_dist_std)
             if args["js"]: dist = js(img_mean, img_std, img_dist_mean, img_dist_std)
+            regularization = (jnp.mean(jnp.exp(img_std)**2) + jnp.mean(jnp.exp(img_dist_std)**2))
         
         elif args["mse"]:
             img_pred, updated_state = state.apply_fn({"params": params, **state.state}, img, mutable=list(state.state.keys()), train=True)
             img_dist_pred, updated_state = state.apply_fn({"params": params, **state.state}, img_dist, mutable=list(state.state.keys()), train=True)
             ## Calculate the MSE
             dist = ((img_pred - img_dist_pred)**2).sum(axis=(1,2,3))**(1/2)
+            regularization = 0
 
         ## Calculate pearson correlation
-        return pearson_correlation(dist, mos), updated_state
+        return pearson_correlation(dist, mos) + config.LAMBDA*regularization, (updated_state, regularization)
     
-    (loss, updated_state), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
+    (loss, (updated_state, regularization)), grads = jax.value_and_grad(loss_fn, has_aux=True)(state.params)
     state = state.apply_gradients(grads=grads)
-    metrics_updates = state.metrics.single_from_model_output(loss=loss)
+    metrics_updates = state.metrics.single_from_model_output(loss=loss, regularization=regularization)
     metrics = state.metrics.merge(metrics_updates)
     state = state.replace(metrics=metrics)
     state = state.replace(state=updated_state)
@@ -230,7 +235,7 @@ def compute_metrics(*, state, batch):
         ## Calculate pearson correlation
         return pearson_correlation(dist, mos)
     
-    metrics_updates = state.metrics.single_from_model_output(loss=loss_fn(state.params))
+    metrics_updates = state.metrics.single_from_model_output(loss=loss_fn(state.params), regularization=None)
     metrics = state.metrics.merge(metrics_updates)
     state = state.replace(metrics=metrics)
     return state
@@ -265,7 +270,9 @@ save_args = orbax_utils.save_args_from_target(state)
 
 metrics_history = {
     "train_loss": [],
+    "train_regularization": [],
     "val_loss": [],
+    "val_regularization": [],
 }
 
 for epoch in range(config.EPOCHS):
