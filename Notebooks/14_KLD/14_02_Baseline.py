@@ -40,6 +40,7 @@ parser.add_argument("--testing", action="store_true", help="Perform only one bat
 parser.add_argument("--wandb", default="disabled", help="WandB mode.")
 parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
 parser.add_argument("-e", "--epochs", type=int, default=30, help="Number of training epochs.")
+parser.add_argument("-b", "--batch-size", type=int, default=16, help="Number of samples per batch.")
 
 args = parser.parse_args()
 args = vars(args)
@@ -53,12 +54,12 @@ elif args["mse"]:
 else:
     METRIC = None
 
-# dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
-# dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
+dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
+dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
 # dst_train = TID2008("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
 # dst_val = TID2013("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
-dst_train = TID2008("/media/databases/IQA//TID/TID2008/", exclude_imgs=[25])
-dst_val = TID2013("/media/databases/IQA//TID/TID2013/", exclude_imgs=[25])
+# dst_train = TID2008("/media/databases/IQA//TID/TID2008/", exclude_imgs=[25])
+# dst_val = TID2013("/media/databases/IQA//TID/TID2013/", exclude_imgs=[25])
 
 img, img_dist, mos = next(iter(dst_train.dataset))
 img.shape, img_dist.shape, mos.shape
@@ -67,7 +68,7 @@ img, img_dist, mos = next(iter(dst_val.dataset))
 img.shape, img_dist.shape, mos.shape
 
 config = {
-    "BATCH_SIZE": 16,
+    "BATCH_SIZE": args["batch_size"],
     "EPOCHS": args["epochs"],
     "LEARNING_RATE": 3e-4,
     "SEED": 42,
