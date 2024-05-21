@@ -43,6 +43,8 @@ from JaxPlayground.utils.wandb import *
 parser = argparse.ArgumentParser(description="Trainig a very simple model on TID08 and testing in TID13",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--id", help="WandB Run ID.")
+parser.add_argument("--regularized", action="store_true", help="If the model was trained with regularization or not.")
+
 args = parser.parse_args()
 args = vars(args)
 
@@ -62,6 +64,7 @@ img.shape, img_dist.shape, mos.shape
 
 # %%
 id = args["id"]
+regularized = args["regularized"]
 
 # %%
 api = wandb.Api()
@@ -119,8 +122,10 @@ class PerceptNet(nn.Module):
         outputs = nn.Conv(features=config.N_GABORS, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         if config.METRIC == "KLD" or config.METRIC == "JS":
             mean = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-            std = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-            # std = nn.Conv(features=config.N_GABORS, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
+            if config.STD_CONV:
+                std = nn.Conv(features=config.N_GABORS, kernel_size=(config.GDNSPATIOFREQ_KERNEL_SIZE, config.GDNSPATIOFREQ_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
+            else:
+                std = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)            # std = nn.Conv(features=config.N_GABORS, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
             # std = -nn.relu(std)
             return mean, std
         elif config.METRIC == "MSE":
@@ -131,10 +136,17 @@ class PerceptNet(nn.Module):
 # ## Define the metrics with `clu`
 
 # %%
-@struct.dataclass
-class Metrics(metrics.Collection):
-    """Collection of metrics to be tracked during training."""
-    loss: metrics.Average.from_output("loss")
+if not regularized:
+    @struct.dataclass
+    class Metrics(metrics.Collection):
+        """Collection of metrics to be tracked during training."""
+        loss: metrics.Average.from_output("loss")
+else:
+    @struct.dataclass
+    class Metrics(metrics.Collection):
+        """Collection of metrics to be tracked during training."""
+        loss: metrics.Average.from_output("loss")
+        regularization: metrics.Average.from_output("regularization")
 
 # %% [markdown]
 # By default, `TrainState` doesn't include metrics, but it's very easy to subclass it so that it does:
