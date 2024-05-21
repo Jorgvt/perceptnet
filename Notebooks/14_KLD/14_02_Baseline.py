@@ -42,6 +42,7 @@ parser.add_argument("--run_name", default=None, help="Name for the WandB run.")
 parser.add_argument("-e", "--epochs", type=int, default=30, help="Number of training epochs.")
 parser.add_argument("-b", "--batch-size", type=int, default=16, help="Number of samples per batch.")
 parser.add_argument("--lambda", type=float, default=0., help="Lambda coefficient to weight regularization.")
+parser.add_argument("--std-conv", action="store_true", help="Use a Conv layer to produce the logstd instead of the GDN.")
 
 args = parser.parse_args()
 args = vars(args)
@@ -81,6 +82,7 @@ config = {
     "GABOR_KERNEL_SIZE": 5,
     "GDNSPATIOFREQ_KERNEL_SIZE": 1,
     "LAMBDA": args["lambda"],
+    "STD_CONV": args["std_conv"],
 }
 config = ConfigDict(config)
 config
@@ -127,7 +129,10 @@ class PerceptNet(nn.Module):
         outputs = nn.Conv(features=config.N_GABORS, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
         if args["kld"] or args["js"]:
             mean = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
-            std = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
+            if args["std_conv"]:
+                std = nn.Conv(features=config.N_GABORS, kernel_size=(config.GDNSPATIOFREQ_KERNEL_SIZE, config.GDNSPATIOFREQ_KERNEL_SIZE), strides=1, padding="SAME")(outputs)
+            else:
+                std = GDN(kernel_size=config.GDNSPATIOFREQ_KERNEL_SIZE, strides=1, padding="SAME", apply_independently=False)(outputs)
             # std = nn.Conv(features=config.N_GABORS, kernel_size=(1,1), strides=1, padding="SAME")(outputs)
             # std = -nn.relu(std)
             return mean, std
