@@ -68,7 +68,7 @@ img.shape, img_dist.shape, mos.shape
 
 # %%
 config = {
-    "BATCH_SIZE": 64,
+    "BATCH_SIZE": 16,
     "EPOCHS": 500,
     "LEARNING_RATE": 3e-2,
     "SEED": 42,
@@ -445,25 +445,6 @@ state.params.keys()
 # %%
 pred, _ = state.apply_fn({"params": state.params, **state.state}, jnp.ones(shape=(1,384,512,3)), train=True, mutable=list(state.state.keys()))
 state = state.replace(state=_)
-
-# %%
-state.state["precalc_filter"]["GaborLayerGammaHumanLike__0"]["kernel"].shape
-
-# %%
-import matplotlib.pyplot as plt
-
-# %%
-def plot_filters(kernel):
-    kx, ky, cin, cout = kernel.shape
-    fig, axes = plt.subplots(cin, cout, squeeze=False)
-    for i in range(cin):
-        for j in range(cout):
-            axes[i,j].imshow(kernel[:,:,i,j])
-            axes[i,j].axis("off")
-    plt.show()
-
-# %%
-__ = jax.tree_util.tree_map(lambda x: plot_filters(x), _)
 
 # %%
 def check_trainable(path):
