@@ -1,0 +1,18 @@
+universe = vanilla
+
+executable          = run_nb.sh
+arguments           = 
+log                 = logs/log/test.log
+output              = logs/output/outfile.$(Cluster).$(Process).out
+error               = logs/errors/errors.$(Cluster).$(process).err
+
+# Needed to read .bashrc and conda environment
+getenv = True
+
+request_gpus = 1
+
+# request_Cpus        = 2
+# request_Memory      = 1000
+
+# queue 1
+queue
