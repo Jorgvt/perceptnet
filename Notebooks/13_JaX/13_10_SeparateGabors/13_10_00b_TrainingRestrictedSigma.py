@@ -53,11 +53,11 @@ from JaxPlayground.utils.wandb import *
 # > We're going to employ `iqadatasets` to ease the loading of the data.
 
 # %%
-dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
+# dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
 # dst_train = KADIK10K("/lustre/ific.uv.es/ml/uv075/Databases/IQA/KADIK10K/")
-dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
-# dst_train = TID2008("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
-# dst_val = TID2013("/media/disk/databases/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
+# dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
+dst_train = TID2008("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
+dst_val = TID2013("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
 # dst_train = TID2008("/media/databases/IQA/TID/TID2008/", exclude_imgs=[25])
 # dst_val = TID2013("/media/databases/IQA/TID/TID2013/", exclude_imgs=[25])
 
@@ -893,7 +893,10 @@ for epoch in range(config.EPOCHS):
 
     wandb.log({f"{k}": wandb.Histogram(v) for k, v in flatten_params(state.params).items()}, commit=False)
     wandb.log({f"{k}": wandb.Histogram(v) for k, v in flatten_params(extra["intermediates"]).items()}, commit=False)
-    wandb.log({"epoch": epoch+1, "learning_rate": schedule_lr(step), **{name:values[-1] for name, values in metrics_history.items()}})
+    if hasattr(config, "LEARNING_RATE"):
+        wandb.log({"epoch": epoch+1, "learning_rate": config.LEARNING_RATE, **{name:values[-1] for name, values in metrics_history.items()}})
+    else:
+        wandb.log({"epoch": epoch+1, "learning_rate": schedule_lr(step), **{name:values[-1] for name, values in metrics_history.items()}})
     print(f'Epoch {epoch} -> [Train] Loss: {metrics_history["train_loss"][-1]} [Val] Loss: {metrics_history["val_loss"][-1]}')
     # break
 
