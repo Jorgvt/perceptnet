@@ -70,7 +70,7 @@ wandb.init(project="PerceptNet_v15",
         #    name="FinalModel_AllFree",
            job_type="training",
            config=config,
-           mode="disabled",
+           mode="online",
            )
 config = config
 config
