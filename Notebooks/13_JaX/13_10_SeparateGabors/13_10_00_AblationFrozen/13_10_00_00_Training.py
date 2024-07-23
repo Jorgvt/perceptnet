@@ -67,7 +67,7 @@ img.shape, img_dist.shape, mos.shape
 
 # %%
 wandb.init(project="PerceptNet_v15",
-           name="FinalModel_AllFree",
+        #    name="FinalModel_AllFree",
            job_type="training",
            config=config,
            mode="disabled",
