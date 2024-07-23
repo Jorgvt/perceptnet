@@ -1,18 +1,9 @@
-# %%
-# %load_ext autoreload
-# %autoreload 2
-
-# %% [markdown]
-# # IQA tracking params and variables
-# 
-# > When using parametric layers we have to be able to keep track of the parameters and the variables of the model (which are not going to be trained). We're going to play with this concept using our implementation of the functional layers.
-
-# %%
-# import os; os.environ["XLA_PYTHON_CLIENT_MEM_FRACTION"]=".99"
-
-# %%
 import os
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+import sys
+import argparse
+from absl import flags
+from absl.flags import FLAGS
 
 from typing import Any, Callable, Sequence, Union
 import numpy as np
@@ -33,7 +24,7 @@ import optax
 import orbax.checkpoint
 
 from clu import metrics
-from ml_collections import ConfigDict
+from ml_collections import ConfigDict, config_flags
 
 from einops import reduce, rearrange, repeat
 import wandb
@@ -44,14 +35,19 @@ from fxlayers.initializers import *
 from JaxPlayground.utils.constraints import *
 from JaxPlayground.utils.wandb import *
 
-# %%
-# jax.config.update("jax_debug_nans", False)
 
-# %% [markdown]
-# ## Load the data
-# 
-# > We're going to employ `iqadatasets` to ease the loading of the data.
 
+# parser = argparse.ArgumentParser(description="Training with different configurations",
+                                #  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+# parser.add_argument("-c", "--config", help="Path to the configuration file.")
+# parser.add_argument("-n", "--name", help="Name of the run to be logged.")
+# args = parser.parse_args()
+# args = vars(args)
+# print(args)
+_CONFIG = config_flags.DEFINE_config_file("config")
+flags.FLAGS(sys.argv)
+config = _CONFIG.value
+print(config)
 # %%
 dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
 # dst_train = KADIK10K("/lustre/ific.uv.es/ml/uv075/Databases/IQA/KADIK10K/")
@@ -68,40 +64,6 @@ img.shape, img_dist.shape, mos.shape
 # %%
 img, img_dist, mos = next(iter(dst_val.dataset))
 img.shape, img_dist.shape, mos.shape
-
-# %%
-config = {
-    "BATCH_SIZE": 64,
-    "EPOCHS": 500,
-    "LEARNING_RATE": 3e-3,
-    "INITIAL_LR": 1e-2,
-    "PEAK_LR": 4e-2,
-    "END_LR": 5e-3,
-    "WARMUP_EPOCHS": 15,
-    "SEED": 42,
-    "GDN_CLIPPING": True,
-    "NORMALIZE_PROB": False,
-    "NORMALIZE_ENERGY": True,
-    "ZERO_MEAN": True,
-    "USE_BIAS": False,
-    "CS_KERNEL_SIZE": 21,
-    "GDNGAUSSIAN_KERNEL_SIZE": 11,
-    "GABOR_KERNEL_SIZE": 31,
-    "N_SCALES": 4,
-    "N_ORIENTATIONS": 16,
-    # "N_GABORS": 128,
-    "USE_GAMMA": True,
-    "INIT_JH": True,
-    "INIT_GABOR": True,
-    "TRAIN_JH": True,
-    "TRAIN_CS": True,
-    "TRAIN_GABOR": True,
-    "A_GABOR": True,
-    "A_GDNSPATIOFREQORIENT": True,
-    "TRAIN_ONLY_LAST_GDN": False,
-}
-config = ConfigDict(config)
-config
 
 # %%
 wandb.init(project="PerceptNet_v15",
