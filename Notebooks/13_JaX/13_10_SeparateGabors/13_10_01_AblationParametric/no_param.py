@@ -1,0 +1,37 @@
+from ml_collections import ConfigDict
+def get_config():
+    config = {
+        "BATCH_SIZE": 64,
+        "EPOCHS": 500,
+        "LEARNING_RATE": 3e-3,
+        "INITIAL_LR": 1e-2,
+        "PEAK_LR": 4e-2,
+        "END_LR": 5e-3,
+        "WARMUP_EPOCHS": 15,
+        "SEED": 42,
+        "GDN_CLIPPING": True,
+        "NORMALIZE_PROB": False,
+        "NORMALIZE_ENERGY": True,
+        "ZERO_MEAN": True,
+        "USE_BIAS": False,
+        "CS_KERNEL_SIZE": 21,
+        "GDNGAUSSIAN_KERNEL_SIZE": 11,
+        "GABOR_KERNEL_SIZE": 31,
+        "N_SCALES": 4,
+        "N_ORIENTATIONS": 16,
+        # "N_GABORS": 128,
+        "USE_GAMMA": True,
+        "INIT_JH": True,
+        "INIT_GABOR": True,
+        "TRAIN_JH": True,
+        "TRAIN_CS": True,
+        "TRAIN_GABOR": True,
+        "A_GABOR": True,
+        "A_GDNSPATIOFREQORIENT": True,
+        "TRAIN_ONLY_LAST_GDN": False,
+	"PARAM_CS": False,
+	"PARAM_DN_CS": False,
+	"PARAM_GABOR": False,
+	# "PARAM_DN_FINAL": False, # It is coupled with the parametrization of the Gabor
+    }
+    return ConfigDict(config)
