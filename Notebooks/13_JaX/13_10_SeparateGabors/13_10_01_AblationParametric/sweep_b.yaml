@@ -1,0 +1,23 @@
+project: PerceptNet_v15
+program: 13_10_00_01b_Training_config.py
+method: grid
+metric:
+  goal: minimize
+  name: val_loss
+parameters:
+  PARAM_CS: 
+    values: [False, True]
+  PARAM_DN_CS: 
+    values: [False, True]
+  PARAM_GABOR: 
+    values: [False, True]
+  FINAL_B: 
+    values: [False, True]
+#   PARAM_DN_FINAL: 
+#     values: [False, True]
+
+# command:
+# - ${env}
+# - ${interpreter}
+# - ${program}
+# - "--config=no_param.py"
