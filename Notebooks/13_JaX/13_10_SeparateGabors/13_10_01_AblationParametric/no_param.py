@@ -20,7 +20,7 @@ def get_config():
         "N_SCALES": 4,
         "N_ORIENTATIONS": 16,
         # "N_GABORS": 128,
-        "USE_GAMMA": True,
+        "USE_GAMMA": False,
         "INIT_JH": True,
         "INIT_GABOR": True,
         "TRAIN_JH": True,
