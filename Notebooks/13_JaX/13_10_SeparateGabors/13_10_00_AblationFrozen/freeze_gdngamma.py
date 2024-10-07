@@ -27,7 +27,7 @@ def get_config():
         "A_GDNSPATIOFREQORIENT": True,
         ## Freezing config
         "TRAIN_GDNGAMMA": False,
-        "TRAIN_JH": False,
+        "TRAIN_JH": True,
         "TRAIN_GDNCOLOR": True,
         "TRAIN_CS": True,
         "TRAIN_GDNGAUSSIAN": True,

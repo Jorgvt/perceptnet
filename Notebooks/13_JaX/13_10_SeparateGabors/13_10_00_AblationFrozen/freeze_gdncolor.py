@@ -28,7 +28,7 @@ def get_config():
         ## Freezing config
         "TRAIN_GDNGAMMA": False,
         "TRAIN_JH": False,
-        "TRAIN_GDNCOLOR": True,
+        "TRAIN_GDNCOLOR": False,
         "TRAIN_CS": True,
         "TRAIN_GDNGAUSSIAN": True,
         "TRAIN_GABOR": True,

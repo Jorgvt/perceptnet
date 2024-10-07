@@ -23,11 +23,15 @@ def get_config():
         "USE_GAMMA": True,
         "INIT_JH": True,
         "INIT_GABOR": True,
-        "TRAIN_JH": True,
-        "TRAIN_CS": True,
-        "TRAIN_GABOR": True,
         "A_GABOR": True,
         "A_GDNSPATIOFREQORIENT": True,
+        ## Freezing config
+        "TRAIN_GDNGAMMA": True,
+        "TRAIN_JH": True,
+        "TRAIN_GDNCOLOR": True,
+        "TRAIN_CS": True,
+        "TRAIN_GDNGAUSSIAN": True,
+        "TRAIN_GABOR": True,
         "TRAIN_ONLY_LAST_GDN": False,
     }
     return ConfigDict(config)
