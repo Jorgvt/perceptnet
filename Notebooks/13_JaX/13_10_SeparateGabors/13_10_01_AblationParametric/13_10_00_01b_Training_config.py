@@ -69,7 +69,7 @@ config = {
     "N_SCALES": 4,
     "N_ORIENTATIONS": 16,
     # "N_GABORS": 128,
-    "USE_GAMMA": True,
+    "USE_GAMMA": False,
     "INIT_JH": True,
     "INIT_GABOR": True,
     "TRAIN_JH": True,
@@ -104,6 +104,7 @@ img.shape, img_dist.shape, mos.shape
 # %%
 wandb.init(project="PerceptNet_v15",
         #    name="FinalModel_AllFree",
+	   name="No_Param",
            job_type="training",
            config=config,
            mode="online",
@@ -495,7 +496,6 @@ class PerceptNet(nn.Module):
         ## Final GDN mixing Gabor information (?)
             outputs = GDNSpatioChromaFreqOrient(kernel_size=21, strides=1, padding="symmetric", fs=32, apply_independently=False)(outputs, fmean=fmean, theta_mean=theta_mean, **kwargs)
         else:
-            outputs = pad_same_from_kernel_size(outputs, kernel_size=config.GABOR_KERNEL_SIZE, mode="symmetric")
             outputs = nn.Conv(features=128, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), padding="VALID", use_bias=False)(outputs)
             # outputs = pad_same_from_kernel_size(outputs, kernel_size=21, mode="symmetric")
             outputs = GDN(kernel_size=(21,21), apply_independently=False, padding="SAME")(outputs)
