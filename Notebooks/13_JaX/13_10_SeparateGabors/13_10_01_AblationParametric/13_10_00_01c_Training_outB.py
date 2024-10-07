@@ -81,16 +81,16 @@ config = {
     "PARAM_CS": False,
     "PARAM_DN_CS": False,
     "PARAM_GABOR": False,
-    # "PARAM_DN_FINAL": False, # It is coupled with the parametrization of the Gabor
+    "PARAM_DN_FINAL": False, # It is coupled with the parametrization of the Gabor
     "FINAL_B": True,
 }
 
 # %%
-dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
+# dst_train = TID2008("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2008/", exclude_imgs=[25])
 # dst_train = KADIK10K("/lustre/ific.uv.es/ml/uv075/Databases/IQA/KADIK10K/")
-dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
-# dst_train = TID2008("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
-# dst_val = TID2013("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
+# dst_val = TID2013("/lustre/ific.uv.es/ml/uv075/Databases/IQA//TID/TID2013/", exclude_imgs=[25])
+dst_train = TID2008("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2008/", exclude_imgs=[25])
+dst_val = TID2013("/media/disk/vista/BBDD_video_image/Image_Quality//TID/TID2013/", exclude_imgs=[25])
 # dst_train = TID2008("/media/databases/IQA/TID/TID2008/", exclude_imgs=[25])
 # dst_val = TID2013("/media/databases/IQA/TID/TID2013/", exclude_imgs=[25])
 
@@ -110,7 +110,10 @@ wandb.init(project="PerceptNet_v15",
            mode="online",
            )
 config = wandb.config
-config
+print(config)
+if config.PARAM_DN_FINAL:
+    if config.PARAM_GABOR: pass
+    else: wandb.finish()
 
 # %%
 dst_train_rdy = dst_train.dataset.shuffle(buffer_size=100,
@@ -493,11 +496,13 @@ class PerceptNet(nn.Module):
         # outputs, fmean, theta_mean = GaborLayerGamma_(n_scales=4+2+2, n_orientations=8*3, kernel_size=config.GABOR_KERNEL_SIZE, fs=32, xmean=config.GABOR_KERNEL_SIZE/32/2, ymean=config.GABOR_KERNEL_SIZE/32/2, strides=1, padding="VALID", normalize_prob=config.NORMALIZE_PROB, normalize_energy=config.NORMALIZE_ENERGY, zero_mean=config.ZERO_MEAN, use_bias=config.USE_BIAS, train_A=config.A_GABOR)(outputs, return_freq=True, return_theta=True, **kwargs)
         if config.PARAM_GABOR:
             outputs, fmean, theta_mean = GaborLayerGammaHumanLike_(n_scales=[4,2,2], n_orientations=[8,8,8], kernel_size=config.GABOR_KERNEL_SIZE, fs=32, xmean=config.GABOR_KERNEL_SIZE/32/2, ymean=config.GABOR_KERNEL_SIZE/32/2, strides=1, padding="VALID", normalize_prob=config.NORMALIZE_PROB, normalize_energy=config.NORMALIZE_ENERGY, zero_mean=config.ZERO_MEAN, use_bias=config.USE_BIAS, train_A=config.A_GABOR)(outputs, return_freq=True, return_theta=True, **kwargs)
-        ## Final GDN mixing Gabor information (?)
-            outputs = GDNSpatioChromaFreqOrient(kernel_size=21, strides=1, padding="symmetric", fs=32, apply_independently=False)(outputs, fmean=fmean, theta_mean=theta_mean, **kwargs)
         else:
             outputs = pad_same_from_kernel_size(outputs, kernel_size=config.GABOR_KERNEL_SIZE, mode="symmetric")
             outputs = nn.Conv(features=128, kernel_size=(config.GABOR_KERNEL_SIZE,config.GABOR_KERNEL_SIZE), padding="VALID", use_bias=False)(outputs)
+        ## Final GDN mixing Gabor information (?)
+        if config.PARAM_DN_FINAL:
+            outputs = GDNSpatioChromaFreqOrient(kernel_size=21, strides=1, padding="symmetric", fs=32, apply_independently=False)(outputs, fmean=fmean, theta_mean=theta_mean, **kwargs)
+        else:
             # outputs = pad_same_from_kernel_size(outputs, kernel_size=21, mode="symmetric")
             outputs = GDN(kernel_size=(21,21), apply_independently=False, padding="SAME")(outputs)
 
@@ -762,7 +767,7 @@ if config.PARAM_GABOR and config.INIT_GABOR:
 # state.params["GDNSpatioChromaFreqOrient_0"]["GaussianLayerGamma_0"]["gamma"] = jnp.ones_like(state.params["GDNSpatioChromaFreqOrient_0"]["GaussianLayerGamma_0"]["gamma"])*(1./0.1)
 # state.params["GDNSpatioChromaFreqOrient_0"]["OrientGaussianGamma_0"]["gamma"] = jnp.ones_like(state.params["GDNSpatioChromaFreqOrient_0"]["OrientGaussianGamma_0"]["gamma"])*(1/20)
 # state.params["GDNSpatioChromaFreqOrient_0"]["bias"] = jnp.tile(jnp.array([0.001, 0.002, 0.0035, 0.01])/100, reps=config.N_ORIENTATIONS*2)
-if config.PARAM_GABOR:
+if config.PARAM_DN_FINAL:
     state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_a"] = jnp.ones_like(state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_a"])*(1/20)
     state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_t"] = jnp.ones_like(state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_t"])*(1/20)
     state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_d"] = jnp.ones_like(state.params["GDNSpatioChromaFreqOrient_0"]["ChromaFreqOrientGaussianGamma_0"]["gamma_theta_d"])*(1/20)
