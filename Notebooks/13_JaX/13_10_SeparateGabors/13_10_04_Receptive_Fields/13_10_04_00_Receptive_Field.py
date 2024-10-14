@@ -672,7 +672,7 @@ for FILTER_IDX in tqdm(range(N_iters)):
         axes[2].imshow(state.state["precalc_filter"][layer_name]["GaussianLayerGamma_0"]["kernel"][...,0,FILTER_IDX])
     elif "GDN" not in layer_name:
         axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
-    elif "GDNSpatioFreqOrient" in layer_name or "Gamma" in layer_name:
+    elif "GDNSpatioChromaFreqOrient" in layer_name or "Gamma" in layer_name:
         pass
     else:
         axes[2].imshow(state.params[layer_name]["Conv_0"]["kernel"][...,0,FILTER_IDX])
