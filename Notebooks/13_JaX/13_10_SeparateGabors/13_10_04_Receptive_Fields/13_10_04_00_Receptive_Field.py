@@ -56,6 +56,7 @@ parser.add_argument("-b", "--border", default=4, type=int, help="Border pixels t
 parser.add_argument("--min-max", dest="min_max", action="store_true", help="Maximize the output of a channel while minimizing the output of the others.")
 parser.add_argument("--testing", action="store_true", help="Don't save anything.")
 parser.add_argument("--id", help="Run ID.")
+parser.add_argument("--init", action="store_true", help="Load the initialization, not the trained model.")
 
 args = parser.parse_args()
 config = vars(args)
@@ -70,6 +71,7 @@ EPOCHS = config["N_iter"]
 BORDER = config["border"]
 MIN_MAX = config["min_max"]
 TESTING = config["testing"]
+INIT = config["init"]
 
 # %%
 api = wandb.Api()
@@ -424,33 +426,40 @@ class PerceptNet(nn.Module):
         ## bias = 0.1 / kernel = 0.5
         if config.USE_GAMMA: outputs = GDNGamma()(inputs)
         else: outputs = GDN(kernel_size=(1,1), apply_independently=True)(inputs)
+        if layer_name == "GDNGamma_0": return outputs
 
         ## Color (ATD) Transformation
         outputs = nn.Conv(features=3, kernel_size=(1,1), use_bias=False, name="Color")(outputs)
+        if layer_name == "Color": return outputs
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
 
         ## GDN Star A - T - D [Separated]
         outputs = GDN(kernel_size=(1,1), apply_independently=True)(outputs)
+        if layer_name == "GDN_0": return outputs
 
         ## Center Surround (DoG)
         ## Initialized so that 3 are positives and 3 are negatives and no interaction between channels is present
         outputs = pad_same_from_kernel_size(outputs, kernel_size=config.CS_KERNEL_SIZE, mode="symmetric")
         outputs = CenterSurroundLogSigmaK(features=3, kernel_size=config.CS_KERNEL_SIZE, fs=21, use_bias=False, padding="VALID")(outputs, **kwargs)
+        if layer_name == "CenterSurroundLogSigmaK_0": return outputs
         outputs = nn.max_pool(outputs, window_shape=(2,2), strides=(2,2))
 
         ## GDN per channel with mean substraction in T and D (Spatial Gaussian Kernel)
         ### fs = 32 / kernel_size = (11,11) -> 0.32 > 0.02 --> OK!
         ## TO-DO: - Spatial Gaussian Kernel (0.02 deg) -> fs = 64/2 & 0.02*64/2 = sigma (px) = 0.69
         outputs = GDNGaussian(kernel_size=config.GDNGAUSSIAN_KERNEL_SIZE, apply_independently=True, fs=32, padding="symmetric", normalize_prob=config.NORMALIZE_PROB, normalize_energy=config.NORMALIZE_ENERGY)(outputs, **kwargs)
+        if layer_name == "GDNGaussian_0": return outputs
 
         ## GaborLayer per channel with GDN mixing only same-origin-channel information
         ### [Gaussian] sigma = 0.2 (deg) fs = 32 / kernel_size = (21,21) -> 21/32 = 0.66 --> OK!
         outputs = pad_same_from_kernel_size(outputs, kernel_size=config.GABOR_KERNEL_SIZE, mode="symmetric")
         # outputs, fmean, theta_mean = GaborLayerGamma_(n_scales=4+2+2, n_orientations=8*3, kernel_size=config.GABOR_KERNEL_SIZE, fs=32, xmean=config.GABOR_KERNEL_SIZE/32/2, ymean=config.GABOR_KERNEL_SIZE/32/2, strides=1, padding="VALID", normalize_prob=config.NORMALIZE_PROB, normalize_energy=config.NORMALIZE_ENERGY, zero_mean=config.ZERO_MEAN, use_bias=config.USE_BIAS, train_A=config.A_GABOR)(outputs, return_freq=True, return_theta=True, **kwargs)
         outputs, fmean, theta_mean = GaborLayerGammaHumanLike_(n_scales=[4,2,2], n_orientations=[8,8,8], kernel_size=config.GABOR_KERNEL_SIZE, fs=32, xmean=config.GABOR_KERNEL_SIZE/32/2, ymean=config.GABOR_KERNEL_SIZE/32/2, strides=1, padding="VALID", normalize_prob=config.NORMALIZE_PROB, normalize_energy=config.NORMALIZE_ENERGY, zero_mean=config.ZERO_MEAN, use_bias=config.USE_BIAS, train_A=config.A_GABOR)(outputs, return_freq=True, return_theta=True, **kwargs)
+        if layer_name == "GaborLayerGammaHumanLike__0": return outputs
 
         ## Final GDN mixing Gabor information (?)
         outputs = GDNSpatioChromaFreqOrient(kernel_size=21, strides=1, padding="symmetric", fs=32, apply_independently=False)(outputs, fmean=fmean, theta_mean=theta_mean, **kwargs)
+        if layer_name == "GDNSpatioChromaFreqOrient_0": return outputs
 
         return outputs
 
@@ -564,7 +573,8 @@ orbax_checkpointer = orbax.checkpoint.PyTreeCheckpointer()
 save_args = orbax_utils.save_args_from_target(state)
 
 # %%
-a = orbax_checkpointer.restore(os.path.join(prev_run.dir,"model-best"))
+if INIT: a = orbax_checkpointer.restore(os.path.join(prev_run.dir,"model-0"))
+else: a = orbax_checkpointer.restore(os.path.join(prev_run.dir,"model-best"))
 try:
     state = state.replace(params=a["params"],
                             state=a["state"])
@@ -629,7 +639,7 @@ final_imgs = []
 
 if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
 elif "GDNGamma" in layer_name: N_iters = 3
-elif "Gaussian" in layer_name: N_iters = len(state.params[layer_name]["gamma"])
+elif "Gaussian" in layer_name: N_iters = len(state.params[layer_name]["GaussianLayerGamma_0"]["gamma"])
 elif "CenterSurround" in layer_name or "Gabor" in layer_name: N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
 elif "GDN" not in layer_name: N_iters = state.params[layer_name]["kernel"].shape[-1]
 else: N_iters = state.params[layer_name]["Conv_0"]["kernel"].shape[-1]
