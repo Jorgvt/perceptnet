@@ -126,18 +126,21 @@ class PerceptNet(nn.Module):
         ## Might need to be the same for each number
         ## bias = 0.1 / kernel = 0.5
         outputs = GDN(kernel_size=(1, 1), apply_independently=True)(inputs)
-        if layer_name = "GDN_0": return outputs
+        if layer_name == "GDN_0":
+            return outputs
 
         ## Color (ATD) Transformation
         outputs = nn.Conv(features=3, kernel_size=(1, 1), use_bias=False, name="Color")(
             outputs
         )
-        if layer_name = "Color": return outputs
+        if layer_name == "Color":
+            return outputs
         outputs = nn.max_pool(outputs, window_shape=(2, 2), strides=(2, 2))
 
         ## GDN Star A - T - D [Separated]
         outputs = GDN(kernel_size=(1, 1), apply_independently=True)(outputs)
-        if layer_name = "GDN_1": return outputs
+        if layer_name == "GDN_1":
+            return outputs
 
         ## Center Surround (DoG)
         ## Initialized so that 3 are positives and 3 are negatives and no interaction between channels is present
@@ -150,7 +153,8 @@ class PerceptNet(nn.Module):
             use_bias=False,
             padding="VALID",
         )(outputs)
-        if layer_name = "Conv_0": return outputs
+        if layer_name == "Conv_0":
+            return outputs
         outputs = nn.max_pool(outputs, window_shape=(2, 2), strides=(2, 2))
 
         ## GDN per channel with mean substraction in T and D (Spatial Gaussian Kernel)
@@ -164,7 +168,8 @@ class PerceptNet(nn.Module):
             apply_independently=True,
             padding="SAME",
         )(outputs)
-        if layer_name = "GDN_2": return outputs
+        if layer_name == "GDN_2":
+            return outputs
 
         ## GaborLayer per channel with GDN mixing only same-origin-channel information
         ### [Gaussian] sigma = 0.2 (deg) fs = 32 / kernel_size = (21,21) -> 21/32 = 0.66 --> OK!
@@ -178,13 +183,15 @@ class PerceptNet(nn.Module):
             padding="VALID",
             use_bias=False,
         )(outputs)
-        if layer_name = "Conv_1": return outputs
+        if layer_name == "Conv_1":
+            return outputs
 
         ## Final GDN mixing Gabor information (?)
         outputs = GDN(kernel_size=(21, 21), apply_independently=False, padding="SAME")(
             outputs
         )
-        if layer_name = "GDN_3": return outputs
+        if layer_name == "GDN_3":
+            return outputs
 
         return outputs
 
