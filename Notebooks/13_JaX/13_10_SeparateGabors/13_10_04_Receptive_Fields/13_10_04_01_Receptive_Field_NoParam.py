@@ -265,13 +265,17 @@ def train_step(state, batch):
     def loss_fn(params):
         ## Forward pass through the model
         img_pred, updated_state = state.apply_fn(
-            {"params": params, **state.state},
+            {
+                "params": params,
+            },
             img,
             mutable=list(state.state.keys()),
             train=True,
         )
         img_dist_pred, updated_state = state.apply_fn(
-            {"params": params, **state.state},
+            {
+                "params": params,
+            },
             img_dist,
             mutable=list(state.state.keys()),
             train=True,
@@ -307,13 +311,17 @@ def compute_metrics(*, state, batch):
     def loss_fn(params):
         ## Forward pass through the model
         img_pred, updated_state = state.apply_fn(
-            {"params": params, **state.state},
+            {
+                "params": params,
+            },
             img,
             mutable=list(state.state.keys()),
             train=False,
         )
         img_dist_pred, updated_state = state.apply_fn(
-            {"params": params, **state.state},
+            {
+                "params": params,
+            },
             img_dist,
             mutable=list(state.state.keys()),
             train=False,
@@ -364,7 +372,13 @@ from functools import partial
 # %%
 @jax.jit
 def forward(state, inputs):
-    return state.apply_fn({"params": state.params, **state.state}, inputs, train=False)
+    return state.apply_fn(
+        {
+            "params": state.params,
+        },
+        inputs,
+        train=False,
+    )
 
 
 # %%
@@ -377,7 +391,11 @@ def rmse(a, b):
 def compute_distance(state, img1, img2):
     def forward(state, inputs):
         return state.apply_fn(
-            {"params": state.params, **state.state}, inputs, train=False
+            {
+                "params": state.params,
+            },
+            inputs,
+            train=False,
         )
 
     pred_1 = forward(state, img1)
@@ -400,7 +418,11 @@ def optim_step(state, tx, tx_state, img):
     def loss_fn(img):
         def forward(state, inputs):
             return state.apply_fn(
-                {"params": state.params, **state.state}, inputs, train=False
+                {
+                    "params": state.params,
+                },
+                inputs,
+                train=False,
             )
 
         pred = forward(state, img)
