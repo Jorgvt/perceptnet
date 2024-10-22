@@ -637,7 +637,7 @@ name = "PerceptNet"
 # %%
 final_imgs = []
 
-if "GDNSpatioFreqOrient" in layer_name: N_iters = 128
+if "GDNSpatioChromaFreqOrient" in layer_name: N_iters = 128
 elif "GDNGamma" in layer_name: N_iters = 3
 elif "Gaussian" in layer_name: N_iters = len(state.params[layer_name]["GaussianLayerGamma_0"]["gamma"])
 elif "CenterSurround" in layer_name or "Gabor" in layer_name: N_iters = state.state["precalc_filter"][layer_name]["kernel"].shape[-1]
@@ -666,11 +666,13 @@ for FILTER_IDX in tqdm(range(N_iters)):
     fig, axes = plt.subplots(1,4, figsize=(18,4))
     axes[0].imshow(imgs[0][0])
     axes[1].imshow(img[0])
-    if "CenterSurround" in layer_name or "Gaussian" in layer_name or "Gabor" in layer_name:
+    if "CenterSurround" in layer_name or "Gabor" in layer_name:
         axes[2].imshow(state.state["precalc_filter"][layer_name]["kernel"][...,0,FILTER_IDX])
+    elif "Gaussian" in layer_name:
+        axes[2].imshow(state.state["precalc_filter"][layer_name]["GaussianLayerGamma_0"]["kernel"][...,0,FILTER_IDX])
     elif "GDN" not in layer_name:
         axes[2].imshow(state.params[layer_name]["kernel"][...,0,FILTER_IDX])
-    elif "GDNSpatioFreqOrient" in layer_name or "Gamma" in layer_name:
+    elif "GDNSpatioChromaFreqOrient" in layer_name or "Gamma" in layer_name:
         pass
     else:
         axes[2].imshow(state.params[layer_name]["Conv_0"]["kernel"][...,0,FILTER_IDX])
