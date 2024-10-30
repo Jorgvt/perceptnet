@@ -33,18 +33,24 @@ from einops import reduce, rearrange
 import wandb
 
 from iqadatasets.datasets import *
-from paramperceptnet.models import Baseline as PerceptNet
+from paramperceptnet.models import PerceptNet
 from paramperceptnet.training import create_train_state
 
 # %%
-dst = KADIK10K("/media/disk/vista/BBDD_video_image/Image_Quality/KADIK10K/")
+dst = TID2013("/media/disk/vista/BBDD_video_image/Image_Quality/TID/TID2013/")
 
 # %%
 img, img_dist, mos = next(iter(dst.dataset))
 img.shape, img_dist.shape, mos.shape
 
 # %%
-ids = ["rlmp4ntk", # NoParam_NoGamma
+ids = ["i8kkltwu", # TrainAll_GoodInit
+       "gx9gpizs", # Freeze_GDNGamma
+       "c9u2vqjz", # Freeze_J&H
+       "2aae1qvd", # Freeze_GDNColor
+       "f8uv6afu", # Freeze_CS
+       "k24dfyo8", # Freeze_GDNFinalOnle (Freeze_Gabor)
+       "csrhdpbd", # OnlyB
        ]
 
 for id in tqdm(ids):
@@ -60,7 +66,6 @@ for id in tqdm(ids):
     except:
         config = ConfigDict(prev_run.config)
 
-    config["GDNFINAL_KERNEL_SIZE"] = 21
     print(config)
 
     # %%
@@ -90,8 +95,8 @@ for id in tqdm(ids):
         img, img_dist, mos = batch
 
         ## Forward pass through the model
-        img_pred = state.apply_fn({"params": state.params}, img, train=False)
-        img_dist_pred = state.apply_fn({"params": state.params}, img_dist, train=False)
+        img_pred = state.apply_fn({"params": state.params, **state.state}, img, train=False)
+        img_dist_pred = state.apply_fn({"params": state.params, **state.state}, img_dist, train=False)
 
         ## Calculate the distance
         dist = ((img_pred - img_dist_pred)**2).sum(axis=(1,2,3))**(1/2)
@@ -112,7 +117,11 @@ for id in tqdm(ids):
 
     # %%
     a = orbax_checkpointer.restore(os.path.join(prev_run.dir,"model-best"))
-    state = state.replace(params=a["params"])
+    try:
+        state = state.replace(params=a["params"],
+                              state=a["state"])
+    except:
+        state = state.replace(params=a["params"])
 
     print("Parameters loaded!")
 
@@ -146,9 +155,9 @@ for id in tqdm(ids):
     results.head()
 
     # %%
-    wandb.log({"KADID10K": wandb.Table(dataframe=results),
-               "KADID10K_pearson": stats.pearsonr(metrics_history["distance"], metrics_history["mos"])[0],
-               "KADID10K_spearman": stats.spearmanr(metrics_history["distance"], metrics_history["mos"])[0],
+    wandb.log({"TID2013": wandb.Table(dataframe=results),
+               "TID2013_pearson": stats.pearsonr(metrics_history["distance"], metrics_history["mos"])[0],
+               "TID2013_spearman": stats.spearmanr(metrics_history["distance"], metrics_history["mos"])[0],
                })
 
     # %%

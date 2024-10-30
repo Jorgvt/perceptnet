@@ -37,7 +37,7 @@ from paramperceptnet.models import Baseline as PerceptNet
 from paramperceptnet.training import create_train_state
 
 # %%
-dst = KADIK10K("/media/disk/vista/BBDD_video_image/Image_Quality/KADIK10K/")
+dst = TID2008("/media/disk/vista/BBDD_video_image/Image_Quality/TID/TID2008/")
 
 # %%
 img, img_dist, mos = next(iter(dst.dataset))
@@ -146,9 +146,9 @@ for id in tqdm(ids):
     results.head()
 
     # %%
-    wandb.log({"KADID10K": wandb.Table(dataframe=results),
-               "KADID10K_pearson": stats.pearsonr(metrics_history["distance"], metrics_history["mos"])[0],
-               "KADID10K_spearman": stats.spearmanr(metrics_history["distance"], metrics_history["mos"])[0],
+    wandb.log({"TID2008": wandb.Table(dataframe=results),
+               "TID2008_pearson": stats.pearsonr(metrics_history["distance"], metrics_history["mos"])[0],
+               "TID2008_spearman": stats.spearmanr(metrics_history["distance"], metrics_history["mos"])[0],
                })
 
     # %%
