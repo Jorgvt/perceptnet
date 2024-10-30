@@ -49,6 +49,7 @@ ids = ["i8kkltwu", # TrainAll_GoodInit
        "c9u2vqjz", # Freeze_J&H
        "2aae1qvd", # Freeze_GDNColor
        "f8uv6afu", # Freeze_CS
+       "3r2slksi", # Freeze_GDNGaussian
        "k24dfyo8", # Freeze_GDNFinalOnle (Freeze_Gabor)
        "csrhdpbd", # OnlyB
        ]
