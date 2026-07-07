@@ -1,7 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-import wandb
+try:
+    import wandb
+except ImportError:
+    wandb = None
 from perceptnet.GDN_Jorge import GDN as GDNJ
 
 class GDNWeightWatcherWandb(tf.keras.callbacks.Callback):
@@ -10,6 +13,8 @@ class GDNWeightWatcherWandb(tf.keras.callbacks.Callback):
     """
 
     def __init__(self):
+        if wandb is None:
+            raise ImportError("wandb is required to use GDNWeightWatcherWandb. Please install it using `pip install wandb`.")
         super(GDNWeightWatcherWandb, self).__init__()
 
     def on_epoch_end(self, epoch, logs=None):
@@ -44,7 +49,10 @@ class MOSScatterPlot(tf.keras.callbacks.Callback):
             ax[1].set_xlabel('MOS')
             ax[1].set_ylabel('MOS_Pred')
 
-            wandb.log({'MOS_Scatter':wandb.Image(fig)})
+            if wandb is not None:
+                wandb.log({'MOS_Scatter':wandb.Image(fig)})
+            else:
+                plt.close(fig)
     
     def on_train_end(self, logs=None):
         self.on_epoch_end(self.freq,logs)
