@@ -1,8 +1,9 @@
 import tensorflow as tf
 
+@tf.keras.utils.register_keras_serializable(package="perceptnet")
 class KernelIdentity(tf.keras.initializers.Initializer):
 
-    def __init__(self, gain):
+    def __init__(self, gain=0.1):
         self.gain = gain
 
     def __call__(self, shape, dtype=None):

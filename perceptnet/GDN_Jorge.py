@@ -4,6 +4,19 @@ from tensorflow.keras import initializers
 
 from .kernelidentity import KernelIdentity
 
+@tf.keras.utils.register_keras_serializable(package="perceptnet")
+class ClipConstraint(tf.keras.constraints.Constraint):
+    def __init__(self, clip_value_min=0.0):
+        super(ClipConstraint, self).__init__()
+        self.clip_value_min = float(clip_value_min)
+
+    def __call__(self, w):
+        return tf.clip_by_value(w, clip_value_min=self.clip_value_min, clip_value_max=tf.float32.max)
+
+    def get_config(self):
+        return {'clip_value_min': self.clip_value_min}
+
+@tf.keras.utils.register_keras_serializable(package="perceptnet")
 class GDN(tf.keras.layers.Layer):
     def __init__(self,
                  kernel_size=3,
@@ -19,6 +32,10 @@ class GDN(tf.keras.layers.Layer):
                  data_format="channels_last",
                  **kwargs):
 
+        # Handle backward compatibility where 'alpha' and 'epsilon' were stored in the config
+        kwargs.pop('alpha', None)
+        kwargs.pop('epsilon', None)
+        
         super(GDN, self).__init__(**kwargs)
         self.kernel_size = kernel_size
         self.gamma_init = gamma_init
@@ -26,7 +43,12 @@ class GDN(tf.keras.layers.Layer):
         self.beta_min = beta_min
         self.beta_reparam = (self.beta_min+self.reparam_offset**2)**(1/2)
         self.apply_independently = apply_independently
-        self.kernel_initializer = KernelIdentity(gain=gamma_init) if kernel_initializer=="identity" else kernel_initializer
+        
+        if kernel_initializer == "identity":
+            self.kernel_initializer = KernelIdentity(gain=gamma_init)
+        else:
+            self.kernel_initializer = tf.keras.initializers.get(kernel_initializer)
+            
         self.data_format = data_format
         
         self.alpha_init = alpha_init
@@ -37,12 +59,12 @@ class GDN(tf.keras.layers.Layer):
     def build(self, input_shape):
         ## Extract the number of channels from the input shape
         ## according to the data_format
-        n_channels = input_shape[-1] if self.data_format=="channels_last" else input_shape[0]
-
         if self.data_format=="channels_last":
             n_channels = input_shape[-1]
         elif self.data_format=="channels_first":
-            n_channels = input_shape[0]
+            # For channels_first (batch, channels, height, width), the channel index is 1.
+            # But we keep input_shape[0] fallback if it's somehow unbatched.
+            n_channels = input_shape[1] if len(input_shape) > 3 else input_shape[0]
         else:
             raise ValueError("data_format not supported")
 
@@ -59,47 +81,21 @@ class GDN(tf.keras.layers.Layer):
                                   data_format=self.data_format,
                                   trainable=True,
                                   kernel_initializer=self.kernel_initializer,
-                                  kernel_constraint=lambda x: tf.clip_by_value(x, 
-                                                                       clip_value_min=self.reparam_offset,
-                                                                       clip_value_max=tf.float32.max),
+                                  kernel_constraint=ClipConstraint(self.reparam_offset),
                                   bias_initializer="ones",
-                                  bias_constraint=lambda x: tf.clip_by_value(x, 
-                                                                      clip_value_min=self.beta_reparam,
-                                                                      clip_value_max=tf.float32.max))
+                                  bias_constraint=ClipConstraint(self.beta_reparam))
         self.conv.build(input_shape)
 
-        # We have to define them here so that the names are properly set
-        ## Actually, alpha should be a matrix as big as the kernel, and thus
-        ## every element in X could be on a different power.
-        self.alpha = self.add_weight(shape=(1),
+        self.alpha = self.add_weight(shape=(1,),
                                      initializer=tf.keras.initializers.Constant(self.alpha_init),
                                      trainable=self.alpha_trainable,
                                      name='alpha')
-        self.epsilon = self.add_weight(shape=(1),
+        self.epsilon = self.add_weight(shape=(1,),
                                        initializer=tf.keras.initializers.Constant(self.epsilon_init),
                                        trainable=self.epsilon_trainable,
                                        name='epsilon')
-        ## Before que needed to define beta explicitly because we were using tf.nn.conv2d() and that doesnt allow
-        ## the use of biases, but it's actually the bias. (The torch implementation uses it as the bias as well).
-        # self.beta = self.add_weights(shape=n_channels,
-        #                              initializer='ones',
-        #                              constrain=lambda x: tf.clip_by_value(x, 
-        #                                                                   clip_value_min=self.beta_reparam,
-        #                                                                   clip_value_max=tf.float32.max),
-        #                              name='beta')
-
 
     def call(self, X):
-        """
-        The PyTorch implementation works with inputs of shape:
-        [batch_size, channels, height, width].
-        We'll first copy it and then we'll try to change it.
-        """
-        ## We'll first pad the image by hand because doing it inside
-        ## the layer only allows to pad with 0s and we want to pad with the
-        ## reflection. As we're normalizing with the surrounding pixels,ç
-        ## padding with 0s and padding with the reflection can have greatly
-        ## different results at the edges.
         X_pad = tf.pad(X, 
                        mode = 'REFLECT',
                        paddings = tf.constant([[0, 0], # Batch dim
@@ -114,42 +110,69 @@ class GDN(tf.keras.layers.Layer):
         return X / norm_pool
 
     def get_config(self):
-        """
-        Returns a dictionary used to initialize this layer. Is used when
-        saving the layer or a model that contains it.
-        """
         base_config = super(GDN, self).get_config()
-        config = {'alpha':self.alpha.numpy(),
-                  'epsilon':self.epsilon.numpy()}
+        config = {
+            'kernel_size': self.kernel_size,
+            'gamma_init': self.gamma_init,
+            'alpha_init': self.alpha_init,
+            'epsilon_init': self.epsilon_init,
+            'alpha_trainable': self.alpha_trainable,
+            'epsilon_trainable': self.epsilon_trainable,
+            'reparam_offset': self.reparam_offset,
+            'beta_min': self.beta_min,
+            'apply_independently': self.apply_independently,
+            'kernel_initializer': tf.keras.initializers.serialize(self.kernel_initializer) if not isinstance(self.kernel_initializer, str) else self.kernel_initializer,
+            'data_format': self.data_format,
+        }
         return dict(list(base_config.items()) + list(config.items()))
 
+
+@tf.keras.utils.register_keras_serializable(package="perceptnet")
 class GDNCustom(layers.Layer):
     """GDN that takes as input a specific layer to use."""
 
     def __init__(self,
                  layer, # Layer to be used to extract the normalization.
-                 alpha=2,
-                 epsilon=1/2,
-                 **kwargs,
-                 ):
+                 alpha=2.0,
+                 epsilon=0.5,
+                 **kwargs):
         super(GDNCustom, self).__init__(**kwargs)
         self.layer = layer
-        self.alpha = alpha
-        self.epsilon = epsilon
+        self.alpha_val = alpha
+        self.epsilon_val = epsilon
 
-    def build(self,
-              input_shape,
-              ):
+    def build(self, input_shape):
         self.layer.build(input_shape)
-        self.alpha = tf.Variable(self.alpha, trainable=False, name="alpha", dtype=tf.float32)
-        self.epsilon = tf.Variable(self.epsilon, trainable=False, name="epsilon", dtype=tf.float32)
+        self.alpha = self.add_weight(shape=(1,),
+                                     initializer=tf.keras.initializers.Constant(self.alpha_val),
+                                     trainable=False,
+                                     name="alpha",
+                                     dtype=tf.float32)
+        self.epsilon = self.add_weight(shape=(1,),
+                                       initializer=tf.keras.initializers.Constant(self.epsilon_val),
+                                       trainable=False,
+                                       name="epsilon",
+                                       dtype=tf.float32)
 
-    def call(self,
-             X,
-             training=False,
-             ):
+    def call(self, X, training=False):
         norm = tf.math.pow(X, self.alpha)
         norm = self.layer(norm, training=training)
         norm = tf.clip_by_value(norm, clip_value_min=1e-5, clip_value_max=tf.reduce_max(norm))
         norm = tf.math.pow(norm, self.epsilon)
         return X / norm
+
+    def get_config(self):
+        base_config = super(GDNCustom, self).get_config()
+        config = {
+            'layer': tf.keras.layers.serialize(self.layer),
+            'alpha': float(self.alpha.numpy()[0]) if hasattr(self, 'alpha') and hasattr(self.alpha, 'numpy') else float(self.alpha_val),
+            'epsilon': float(self.epsilon.numpy()[0]) if hasattr(self, 'epsilon') and hasattr(self.epsilon, 'numpy') else float(self.epsilon_val),
+        }
+        return dict(list(base_config.items()) + list(config.items()))
+
+    @classmethod
+    def from_config(cls, config):
+        config = config.copy()
+        if 'layer' in config:
+            config['layer'] = tf.keras.layers.deserialize(config['layer'])
+        return cls(**config)
